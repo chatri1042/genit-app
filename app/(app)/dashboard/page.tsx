@@ -6,7 +6,8 @@ export const dynamic = 'force-dynamic';
 
 export default async function Dashboard() {
   const supabase = await createClient();
-  const balance = await getCreditBalance();
+  const { data: { user } } = await supabase.auth.getUser();
+  const balance = await getCreditBalance(user?.id);
   const [{ data: brands }, { data: jobs }, { data: packs }] = await Promise.all([
     supabase.from('brands').select('id,name,color').order('created_at'),
     supabase.from('jobs').select('id,type,format,ratio,status,created_at').order('created_at', { ascending: false }).limit(5),

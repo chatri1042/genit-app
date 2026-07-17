@@ -1,12 +1,17 @@
 import { createClient } from './supabase/server';
 
-// ยอดเครดิตคงเหลือของผู้ใช้ที่ล็อกอินอยู่ (คำนวณจาก ledger ผ่านฟังก์ชันใน DB)
-export async function getCreditBalance(): Promise<number> {
+// ยอดเครดิตคงเหลือ (คำนวณจาก ledger ผ่านฟังก์ชันใน DB)
+// ส่ง uid มาได้ถ้ารู้แล้ว เพื่อลดการเรียก getUser ซ้ำ (เร็วขึ้น)
+export async function getCreditBalance(uid?: string): Promise<number> {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return 0;
-  const { data, error } = await supabase.rpc('credit_balance', { uid: user.id });
-  if (error) throw error;
+  let userId = uid;
+  if (!userId) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return 0;
+    userId = user.id;
+  }
+  const { data, error } = await supabase.rpc('credit_balance', { uid: userId });
+  if (error) return 0;
   return data ?? 0;
 }
 

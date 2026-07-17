@@ -8,6 +8,7 @@ const LINKS = [
   { href: '/scripts', label: 'ร่างบท AI' },
   { href: '/brands', label: 'แบรนด์' },
   { href: '/history', label: 'ประวัติงาน' },
+  { href: '/pricing', label: 'ราคา' },
 ];
 
 export default function TopNav({ balance, email }: { balance: number; email: string }) {

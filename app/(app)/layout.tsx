@@ -8,7 +8,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
-  const balance = await getCreditBalance();
+  const balance = await getCreditBalance(user.id);
   return (
     <>
       <TopNav balance={balance} email={user.email ?? user.phone ?? ''} />
