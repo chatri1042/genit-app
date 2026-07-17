@@ -2,13 +2,14 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import BrandAssets from '@/components/BrandAssets';
+import BrandEdit from '@/components/BrandEdit';
 
 export const dynamic = 'force-dynamic';
 
 export default async function BrandDetail({ params }: { params: { id: string } }) {
   const { id } = params;
   const supabase = await createClient();
-  const { data: brand } = await supabase.from('brands').select('id,name,color').eq('id', id).single();
+  const { data: brand } = await supabase.from('brands').select('id,name,color,description').eq('id', id).single();
   if (!brand) notFound();
 
   const { data: assets } = await supabase.from('assets').select('id,url')
@@ -27,8 +28,9 @@ export default async function BrandDetail({ params }: { params: { id: string } }
         <span style={{ width: 46, height: 46, borderRadius: 12, background: brand.color, flex: 'none' }} />
         <h1 style={{ margin: 0 }}>{brand.name}</h1>
       </div>
-      <p className="muted" style={{ marginTop: 8 }}>อัพรูปสินค้าที่ใช้ประจำของแบรนด์นี้ไว้ที่นี่ — เวลาสร้างวิดีโอจะเลือกใช้ได้เลยไม่ต้องอัพซ้ำ</p>
+      <p className="muted" style={{ marginTop: 8 }}>ใส่รายละเอียด + อัพรูปสินค้าประจำไว้ที่นี่ — เวลาสร้างวิดีโอจะดึงไปใช้ให้อัตโนมัติ ไม่ต้องพิมพ์/อัพซ้ำ</p>
 
+      <BrandEdit brand={brand} />
       <BrandAssets brandId={brand.id} initial={initial} />
     </>
   );

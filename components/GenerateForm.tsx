@@ -11,9 +11,9 @@ const FORMATS = [
   { id: 'image', icon: '🖼️', th: 'สร้างรูปอย่างเดียว', desc: 'ภาพนิ่งโปรโมท ไม่ทำวิดีโอ' },
 ];
 const RATIOS = [
-  { id: '9:16', th: 'แนวตั้ง 9:16', w: 210 },
-  { id: '1:1', th: 'จัตุรัส 1:1', w: 280 },
-  { id: '16:9', th: 'แนวนอน 16:9', w: 320 },
+  { id: '9:16', th: 'แนวตั้ง 9:16', w: 250 },
+  { id: '1:1', th: 'จัตุรัส 1:1', w: 320 },
+  { id: '16:9', th: 'แนวนอน 16:9', w: 360 },
 ];
 const CONCEPTS = [
   { id: 'sale', th: 'ลดราคา' }, { id: 'opening', th: 'โปรเปิดร้าน' },
@@ -42,6 +42,7 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
   const [useBrandImgs, setUseBrandImgs] = useState(true);
   const [brandAssets, setBrandAssets] = useState<Asset[]>([]);
   const [pickedAssets, setPickedAssets] = useState<string[]>([]);
+  const [brandDesc, setBrandDesc] = useState('');
   const [subtitles, setSubtitles] = useState(true);
   const [logo, setLogo] = useState(true);
   const [cta, setCta] = useState(false);
@@ -54,8 +55,10 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
 
   // ---- โหลดรูปที่บันทึกไว้ในแบรนด์ ----
   useEffect(() => {
-    if (!brandId) { setBrandAssets([]); setPickedAssets([]); return; }
+    if (!brandId) { setBrandAssets([]); setPickedAssets([]); setBrandDesc(''); return; }
     (async () => {
+      const { data: bd } = await supabase.from('brands').select('description').eq('id', brandId).single();
+      setBrandDesc(bd?.description ?? '');
       const { data } = await supabase.from('assets').select('url').eq('brand_id', brandId).eq('kind', 'product_image').order('created_at', { ascending: false });
       const paths = (data ?? []).map((a) => a.url);
       if (!paths.length) { setBrandAssets([]); return; }
@@ -183,6 +186,11 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
               </select>
             </label>
             <input type="hidden" name="brand_id" value={brandId} />
+            {brandId && brandDesc && (
+              <div style={{ marginTop: 8, background: 'var(--yellow-soft)', border: '1px solid var(--yellow-deep)', borderRadius: 10, padding: '10px 14px', fontSize: 13.5 }}>
+                <b>รายละเอียดแบรนด์ (จะใส่ในบทให้อัตโนมัติ):</b> {brandDesc}
+              </div>
+            )}
             {brandId && brandAssets.length > 0 && (
               <div style={{ marginTop: 12 }}>
                 <label className="row" style={{ cursor: 'pointer', gap: 8 }}>
@@ -319,6 +327,14 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
               : <div className="pv-empty">📹<br />ผลงานที่สร้างเสร็จ<br />จะมาแสดงที่นี่</div>}
           </div>
           <div className="pv-cap">{isImage ? `${count} รูป` : `${duration} วิ`} · ~{credits} เครดิต</div>
+        </div>
+      </div>
+
+      {/* แถบสร้างลอยล่างจอ (เห็นตลอด) */}
+      <div className="sticky-gen">
+        <div className="sg-in">
+          <div className="muted" style={{ fontSize: 14 }}>ใช้ <b style={{ color: 'var(--ink)', fontSize: 17 }}>{credits}</b> เครดิต</div>
+          <button className="btn btn-lg" disabled={uploading}>✦ บันทึกงาน</button>
         </div>
       </div>
     </form>

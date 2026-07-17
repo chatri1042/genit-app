@@ -125,9 +125,15 @@ textarea { resize: vertical; }
 .tier .tcr { color: var(--muted); font-size: 14px; }
 
 /* generate layout: form + sticky preview */
-.gen-wrap { display: grid; gap: 20px; margin-top: 18px; }
-@media (min-width: 920px) { .gen-wrap { grid-template-columns: 1fr 330px; align-items: start; } }
+.gen-wrap { display: grid; gap: 20px; margin-top: 18px; padding-bottom: 84px; }
+@media (min-width: 920px) { .gen-wrap { grid-template-columns: 1fr 400px; align-items: start; } }
 .preview-panel { position: sticky; top: 80px; }
+
+/* sticky generate bar (always visible at bottom) */
+.sticky-gen { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; background: rgba(255,255,255,.96);
+  backdrop-filter: blur(10px); border-top: 1px solid var(--line); box-shadow: 0 -6px 24px rgba(0,0,0,.06); }
+.sticky-gen .sg-in { max-width: 1060px; margin: 0 auto; padding: 12px 22px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.sticky-gen .btn { box-shadow: 0 4px 14px rgba(217,210,0,.5); }
 .pv-frame { background: #14140f; border-radius: 16px; overflow: hidden; margin: 0 auto; width: 100%;
   display: grid; place-items: center; color: #8c8676; position: relative; }
 .pv-frame img { width: 100%; height: 100%; object-fit: cover; }

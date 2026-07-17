@@ -19,6 +19,9 @@ export default function BrandCreateForm() {
         <input type="color" value={color} onChange={(e) => setColor(e.target.value)} title="เลือกสีเอง" />
       </div>
       <input type="hidden" name="color" value={color} />
+      <label className="field"><span>รายละเอียดแบรนด์ (ขายอะไร จุดเด่น กลุ่มลูกค้า)</span>
+        <textarea name="description" rows={3} placeholder="เช่น ร้านน้ำพริกโฮมเมด รสจัดจ้าน ทำสดใหม่ทุกวัน ส่งทั่วไทย กลุ่มลูกค้าชอบของกินเล่น" />
+      </label>
       <button className="btn" style={{ marginTop: 18 }}>บันทึกแบรนด์</button>
     </form>
   );

@@ -11,14 +11,41 @@ export async function createBrand(formData: FormData) {
 
   const name = String(formData.get('name') ?? '').trim();
   const color = String(formData.get('color') ?? '#EAE41F');
+  const description = String(formData.get('description') ?? '').trim() || null;
   if (!name) return;
 
   const { error } = await supabase.from('brands').insert({
-    user_id: user.id, name, color, font: 'Kanit',
+    user_id: user.id, name, color, font: 'Kanit', description,
   });
   if (error) throw new Error(error.message);
   revalidatePath('/brands');
   revalidatePath('/dashboard');
+}
+
+export async function updateBrand(formData: FormData) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+  const id = String(formData.get('id') ?? '');
+  const name = String(formData.get('name') ?? '').trim();
+  const color = String(formData.get('color') ?? '#EAE41F');
+  const description = String(formData.get('description') ?? '').trim() || null;
+  if (!id || !name) return;
+  const { error } = await supabase.from('brands').update({ name, color, description }).eq('id', id);
+  if (error) throw new Error(error.message);
+  revalidatePath('/brands');
+  revalidatePath(`/brands/${id}`);
+}
+
+export async function deleteBrand(formData: FormData) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+  const id = String(formData.get('id') ?? '');
+  if (!id) return;
+  await supabase.from('brands').delete().eq('id', id);
+  revalidatePath('/brands');
+  redirect('/brands');
 }
 
 export async function createJobDraft(formData: FormData) {
@@ -51,6 +78,14 @@ export async function createJobDraft(formData: FormData) {
   const consent = formData.get('consent') === 'on';
   const credits = Number(formData.get('credits_cost') ?? 0);
 
+  // ดึงรายละเอียดแบรนด์มาใส่ใน brief -> ไปอยู่ใน prompt ตอนเจน (ไม่ต้องพิมพ์ซ้ำ)
+  let brandInfo: { name?: string; description?: string } = {};
+  if (brandId) {
+    const { data: b } = await supabase.from('brands').select('name,description').eq('id', brandId).single();
+    if (b) brandInfo = { name: b.name, description: b.description ?? '' };
+  }
+  const fullBrief = { ...brief, brand_name: brandInfo.name ?? '', brand_description: brandInfo.description ?? '' };
+
   // บันทึกไฟล์รูปที่อัพไว้ลงคลัง assets (ใช้ซ้ำได้)
   if (images.length) {
     await supabase.from('assets').insert(
@@ -68,7 +103,7 @@ export async function createJobDraft(formData: FormData) {
     count,
     concept,
     script_lang: scriptLang,
-    brief,
+    brief: fullBrief,
     voice_config: voiceConfig,
     settings,
     output_urls: images.length ? { inputs: images } : null,
