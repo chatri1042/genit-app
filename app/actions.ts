@@ -66,11 +66,29 @@ export async function createJobDraft(formData: FormData) {
     point: String(formData.get('bfPoint') ?? ''),
     promo: String(formData.get('bfPromo') ?? ''),
   };
-  const voiceConfig = { mode: String(formData.get('voice_mode') ?? 'ai'), path: String(formData.get('voice_path') ?? '') || null };
+  const script = String(formData.get('script') ?? '') || null;
+  let extra: any = {};
+  try { extra = JSON.parse(String(formData.get('extra') ?? '{}')); } catch { extra = {}; }
+  let shots: any[] = [];
+  try { shots = JSON.parse(String(formData.get('shots') ?? '[]')); } catch { shots = []; }
+
+  const voiceConfig = {
+    mode: String(formData.get('voice_mode') ?? 'ai'),
+    path: String(formData.get('voice_path') ?? '') || null,
+    ...(extra.voice_detail ?? {}),
+  };
   const settings = {
     subtitles: formData.get('subtitles') === 'on',
     logo: formData.get('logo') === 'on',
     cta: formData.get('cta') === 'on',
+    mood: extra.mood ?? null,
+    thumbnail: !!extra.thumbnail,
+    thumb_count: extra.thumb_count ?? null,
+    image_text: extra.image_text ?? null,
+    presenter: extra.presenter ?? null,
+    spoken_lang: extra.spoken_lang ?? null,
+    presenter_gender: extra.presenter_gender ?? null,
+    ui_lang: extra.ui_lang ?? 'th',
   };
   let images: string[] = [];
   try { images = JSON.parse(String(formData.get('images') ?? '[]')); } catch { images = []; }
@@ -103,9 +121,11 @@ export async function createJobDraft(formData: FormData) {
     count,
     concept,
     script_lang: scriptLang,
+    script,
     brief: fullBrief,
     voice_config: voiceConfig,
     settings,
+    shots,
     output_urls: images.length ? { inputs: images } : null,
     credits_cost: credits,
     status: 'draft',
