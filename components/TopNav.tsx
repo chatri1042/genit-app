@@ -5,7 +5,6 @@ import { usePathname } from 'next/navigation';
 const LINKS = [
   { href: '/dashboard', label: 'แดชบอร์ด' },
   { href: '/generate', label: 'สร้างวิดีโอ' },
-  { href: '/scripts', label: 'ร่างบท AI' },
   { href: '/brands', label: 'แบรนด์' },
   { href: '/history', label: 'ประวัติงาน' },
   { href: '/pricing', label: 'ราคา' },

@@ -39,7 +39,7 @@ export async function createJobDraft(formData: FormData) {
     point: String(formData.get('bfPoint') ?? ''),
     promo: String(formData.get('bfPromo') ?? ''),
   };
-  const voiceConfig = { mode: String(formData.get('voice_mode') ?? 'ai') };
+  const voiceConfig = { mode: String(formData.get('voice_mode') ?? 'ai'), path: String(formData.get('voice_path') ?? '') || null };
   const settings = {
     subtitles: formData.get('subtitles') === 'on',
     logo: formData.get('logo') === 'on',

@@ -1,5 +1,6 @@
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
-import { createBrand } from '@/app/actions';
+import BrandCreateForm from '@/components/BrandCreateForm';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,33 +11,27 @@ export default async function BrandsPage() {
   return (
     <>
       <div className="eyebrow">แบรนด์</div>
-      <h1 style={{ marginTop: 4 }}>Brand Kit ของคุณ</h1>
+      <h1>Brand Kit ของคุณ</h1>
+      <p className="muted">กดที่แบรนด์เพื่อเข้าไปอัพรูปสินค้าประจำ + ใส่รายละเอียด แล้วเวลาสร้างวิดีโอจะเลือกใช้ได้เลย</p>
 
-      <div className="grid grid-2" style={{ marginTop: 20 }}>
+      <div className="grid grid-2" style={{ marginTop: 20, alignItems: 'start' }}>
         <div className="card">
-          <h2 style={{ color: 'var(--ink)', fontWeight: 600 }}>สร้างแบรนด์ใหม่</h2>
-          <form action={createBrand}>
-            <label className="field"><span>ชื่อแบรนด์</span>
-              <input type="text" name="name" required placeholder="เช่น ครัวคุณยาย" />
-            </label>
-            <label className="field"><span>สีแบรนด์</span>
-              <input type="text" name="color" defaultValue="#EAE41F" />
-            </label>
-            <button className="btn" style={{ marginTop: 16 }}>บันทึกแบรนด์</button>
-          </form>
+          <h2 style={{ color: 'var(--ink)', fontWeight: 600, fontSize: 17 }}>สร้างแบรนด์ใหม่</h2>
+          <BrandCreateForm />
         </div>
 
         <div>
           {brands && brands.length > 0 ? (
             <div className="grid">
               {brands.map((b) => (
-                <div key={b.id} className="card row" style={{ gap: 14 }}>
-                  <span style={{ width: 38, height: 38, borderRadius: 10, background: b.color, display: 'inline-block', flex: 'none' }} />
-                  <div>
+                <Link key={b.id} href={`/brands/${b.id}`} className="card row" style={{ gap: 14, cursor: 'pointer' }}>
+                  <span style={{ width: 42, height: 42, borderRadius: 11, background: b.color, display: 'inline-block', flex: 'none' }} />
+                  <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 600 }}>{b.name}</div>
                     <div className="muted" style={{ fontSize: 13 }}>สร้างเมื่อ {new Date(b.created_at).toLocaleDateString('th-TH')}</div>
                   </div>
-                </div>
+                  <span className="muted" style={{ fontSize: 20 }}>›</span>
+                </Link>
               ))}
             </div>
           ) : (

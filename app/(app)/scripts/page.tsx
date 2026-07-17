@@ -27,7 +27,7 @@ export default function ScriptsPage() {
 
   return (
     <main style={{ maxWidth: 720, margin: '0 auto', padding: '48px 24px' }}>
-      <h1 style={{ fontWeight: 600 }}>ร่างบทด้วย AI (Gemini Flash)</h1>
+      <h1 style={{ fontWeight: 600 }}>ร่างบทด้วย AI</h1>
       <textarea
         value={productInfo}
         onChange={(e) => setProductInfo(e.target.value)}
