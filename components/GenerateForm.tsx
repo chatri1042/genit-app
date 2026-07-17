@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { createJobDraft } from '@/app/actions';
+import { useLang } from './LanguageProvider';
 
 type L = 'th' | 'en';
 const FORMATS = [
@@ -42,7 +43,7 @@ type Shot = { name: string; desc: string };
 
 export default function GenerateForm({ brands }: { brands: Brand[] }) {
   const supabase = useMemo(() => createClient(), []);
-  const [lang, setLang] = useState<L>('th');
+  const { lang } = useLang();
   const T = (th: string, en: string) => (lang === 'th' ? th : en);
 
   const [format, setFormat] = useState('ugc');
@@ -211,14 +212,6 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
       <input type="hidden" name="extra" value={extra} />
 
       <div className="card" style={{ minWidth: 0 }}>
-        {/* lang toggle */}
-        <div className="row" style={{ justifyContent: 'flex-end' }}>
-          <div className="langtog">
-            <button type="button" className={lang === 'th' ? 'active' : ''} onClick={() => setLang('th')}>ไทย</button>
-            <button type="button" className={lang === 'en' ? 'active' : ''} onClick={() => setLang('en')}>EN</button>
-          </div>
-        </div>
-
         {/* format */}
         <span className="muted" style={{ fontSize: 14 }}>{T('รูปแบบวิดีโอ', 'Video format')}</span>
         <div className="fmt-grid" style={{ marginTop: 8 }}>

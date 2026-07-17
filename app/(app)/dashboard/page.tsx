@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { getCreditBalance } from '@/lib/credits';
+import { getUser } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,7 +9,7 @@ const STATUS_TH: Record<string, string> = { draft: 'ร่าง', queued: 'เ�
 
 export default async function Dashboard() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getUser();
   const balance = await getCreditBalance(user?.id);
   const [{ data: brands }, { data: jobs }] = await Promise.all([
     supabase.from('brands').select('id').order('created_at'),
