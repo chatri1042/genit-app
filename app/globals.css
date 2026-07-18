@@ -245,12 +245,11 @@ input[type=color] { width: 46px; height: 36px; padding: 0; border: 1px solid var
 .auth-left { background: linear-gradient(170deg, #FFFDF6 0%, #FBF3D2 100%); padding: 66px 56px 400px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
 .auth-right { background: #F1EFE9; padding: 66px 56px 400px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .auth-in { width: 100%; max-width: 580px; display: flex; flex-direction: column; align-items: center; gap: 30px; }
-.auth-logocard { background: #fff; border-radius: 22px; padding: 24px 62px; box-shadow: 0 12px 34px rgba(180,150,40,.15); }
 .auth-left .logo { font-size: 82px; font-weight: 800; letter-spacing: -3px; line-height: 1; }
 .auth-left .logo b { color: var(--yellow-deep); }
 .auth-lead { font-size: 34px; font-weight: 700; line-height: 1.35; }
 .auth-lead em { font-style: normal; background: linear-gradient(transparent 56%, var(--yellow) 56%); padding: 0 6px; }
-.auth-trial { background: #fff; border: 1.5px solid var(--yellow-deep); border-radius: 16px; padding: 18px 20px; display: flex; gap: 12px; align-items: flex-start; max-width: 560px; text-align: left; }
+.auth-trial { background: transparent; border: none; border-radius: 0; padding: 0; display: flex; gap: 12px; align-items: flex-start; max-width: 560px; text-align: left; }
 .auth-trial .ic { font-size: 30px; line-height: 1; }
 .auth-trial .tt { font-weight: 700; font-size: 19px; }
 .auth-trial .td { font-size: 15px; color: #55565b; margin-top: 5px; line-height: 1.55; }

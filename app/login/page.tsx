@@ -36,7 +36,7 @@ export default function LoginPage() {
     <main className="auth">
         <div className="auth-left">
           <div className="auth-in">
-            <div className="auth-logocard"><div className="logo">Gen<b>It</b></div></div>
+            <div className="logo">Gen<b>It</b></div>
             <div className="auth-lead">ร้านเล็ก ๆ ก็มีคลิปโฆษณา <em>สวย ๆ</em> ได้</div>
             <div className="auth-trial">
               <div className="ic">🎁</div>
