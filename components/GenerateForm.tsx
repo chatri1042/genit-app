@@ -13,18 +13,17 @@ const PLATFORMS = [
 ];
 const MOODS = ['สนุก ตื่นเต้น', 'น่าเชื่อถือ', 'เป็นกันเอง', 'หรูหรา', 'ตลก'];
 const CONCEPTS = [
-  { id: 'sale', th: 'ลดราคา' }, { id: 'opening', th: 'โปรเปิดร้าน' }, { id: 'review', th: 'รีวิวสินค้า' },
-  { id: 'intro', th: 'แนะนำสินค้า' }, { id: 'ba', th: 'เปรียบเทียบก่อน-หลัง' }, { id: 'launch', th: 'เปิดตัวสินค้าใหม่' },
-  { id: 'clearance', th: 'Clearance Sale' }, { id: 'flash', th: 'Flash Sale' }, { id: 'other', th: '+ อื่นๆ (พิมพ์เอง)' },
+  { id: 'sale', th: 'ลดราคา', en: 'Sale' }, { id: 'opening', th: 'โปรเปิดร้าน', en: 'Grand opening' }, { id: 'review', th: 'รีวิวสินค้า', en: 'Product review' },
+  { id: 'intro', th: 'แนะนำสินค้า', en: 'Introduce product' }, { id: 'ba', th: 'เปรียบเทียบก่อน-หลัง', en: 'Before / after' }, { id: 'launch', th: 'เปิดตัวสินค้าใหม่', en: 'New launch' },
+  { id: 'clearance', th: 'Clearance Sale', en: 'Clearance Sale' }, { id: 'flash', th: 'Flash Sale', en: 'Flash Sale' }, { id: 'other', th: '+ อื่นๆ (พิมพ์เอง)', en: '+ Other (type)' },
 ];
-// ปุ่มเริ่มเร็ว (ไม่บังคับ) — กดแล้วติ๊กองค์ประกอบ + ตั้งโทน/คอนเซ็ปต์ให้ ปรับต่อได้
-const PRESETS: { id: string; th: string; pres: boolean; prod: boolean; place: boolean; mood: string; concept: string }[] = [
-  { id: 'review', th: 'รีวิวสินค้า', pres: true, prod: true, place: false, mood: 'น่าเชื่อถือ', concept: 'review' },
-  { id: 'talk', th: 'พรีเซนเตอร์พูด', pres: true, prod: false, place: false, mood: 'เป็นกันเอง', concept: 'review' },
-  { id: 'product', th: 'โชว์สินค้า', pres: false, prod: true, place: false, mood: 'สนุก ตื่นเต้น', concept: 'intro' },
-  { id: 'shop', th: 'โฆษณาร้าน / รีสอร์ท', pres: false, prod: false, place: true, mood: 'หรูหรา', concept: 'intro' },
-  { id: 'service', th: 'หมอดู / บริการ', pres: true, prod: false, place: true, mood: 'น่าเชื่อถือ', concept: 'intro' },
-  { id: 'food', th: 'อาหาร / ขนม', pres: false, prod: true, place: false, mood: 'สนุก ตื่นเต้น', concept: 'review' },
+// ปุ่มเริ่มเร็ว (ไม่บังคับ) — กดแล้วติ๊กองค์ประกอบ + ตั้งโทน/คอนเซ็ปต์ให้ ปรับต่อได้ (5 อัน · 2 แถว)
+const PRESETS: { id: string; th: string; en: string; pres: boolean; prod: boolean; place: boolean; mood: string; concept: string }[] = [
+  { id: 'review', th: 'รีวิวสินค้า', en: 'Product review', pres: true, prod: true, place: false, mood: 'น่าเชื่อถือ', concept: 'review' },
+  { id: 'service', th: 'บริการ', en: 'Service', pres: true, prod: false, place: true, mood: 'น่าเชื่อถือ', concept: 'intro' },
+  { id: 'shop', th: 'ร้าน / รีสอร์ท', en: 'Shop / resort', pres: false, prod: false, place: true, mood: 'หรูหรา', concept: 'intro' },
+  { id: 'talk', th: 'พรีเซนเตอร์พูด', en: 'Talking presenter', pres: true, prod: false, place: false, mood: 'เป็นกันเอง', concept: 'review' },
+  { id: 'food', th: 'อาหาร / ขนม', en: 'Food', pres: false, prod: true, place: false, mood: 'สนุก ตื่นเต้น', concept: 'review' },
 ];
 const V_GENDER = ['หญิง', 'ชาย'];
 const V_AGE = ['วัยรุ่น', 'ผู้ใหญ่', 'วัยกลางคน', 'สูงวัย'];
@@ -33,6 +32,18 @@ const VOICES = [{ id: 'ploy', n: 'น้องพลอย', d: 'สดใส' }
 const AV_GENDER = ['หญิง', 'ชาย', 'ไม่ระบุ'];
 const AV_AGE = ['วัยรุ่น (18–25)', 'ผู้ใหญ่ (26–40)', 'วัยกลางคน (40–55)', 'สูงวัย (55+)'];
 const AV_ETH = ['ไทย', 'เอเชียตะวันออก', 'ลูกครึ่ง', 'ตะวันตก', 'เอเชียใต้', 'แอฟริกัน'];
+// แปลค่าตัวเลือกเป็นอังกฤษ (state เก็บค่าไทยไว้เหมือนเดิม แค่ตอนแสดงผลแปลให้)
+const VAL_EN: Record<string, string> = {
+  'สนุก ตื่นเต้น': 'Fun & exciting', 'น่าเชื่อถือ': 'Trustworthy', 'เป็นกันเอง': 'Friendly', 'หรูหรา': 'Luxurious', 'ตลก': 'Funny',
+  'หญิง': 'Female', 'ชาย': 'Male', 'ไม่ระบุ': 'Any',
+  'วัยรุ่น': 'Teen', 'ผู้ใหญ่': 'Adult', 'วัยกลางคน': 'Middle-aged', 'สูงวัย': 'Senior',
+  'สดใสมีพลัง': 'Bright & energetic', 'นุ่มนวลเป็นมิตร': 'Soft & friendly', 'จริงจังน่าเชื่อถือ': 'Serious & credible', 'ขี้เล่นสนุก': 'Playful',
+  'ไทย': 'Thai', 'อังกฤษ': 'English', 'ไทย + ซับอังกฤษ': 'Thai + EN subs', 'จีน': 'Chinese',
+  'อัตโนมัติ (ตามรูป)': 'Auto (from photo)',
+  'วัยรุ่น (18–25)': 'Teen (18–25)', 'ผู้ใหญ่ (26–40)': 'Adult (26–40)', 'วัยกลางคน (40–55)': 'Middle (40–55)', 'สูงวัย (55+)': 'Senior (55+)',
+  'เอเชียตะวันออก': 'East Asian', 'ลูกครึ่ง': 'Mixed', 'ตะวันตก': 'Western', 'เอเชียใต้': 'South Asian', 'แอฟริกัน': 'African',
+  'สดใส': 'Bright', 'นุ่มนวล': 'Soft', 'จริงจัง': 'Serious',
+};
 
 type Brand = { id: string; name: string };
 type Asset = { path: string; url: string };
@@ -42,6 +53,7 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
   const supabase = useMemo(() => createClient(), []);
   const { lang } = useLang();
   const T = (th: string, en: string) => (lang === 'th' ? th : en);
+  const tv = (s: string) => (lang === 'en' ? (VAL_EN[s] ?? s) : s); // แปลค่าตัวเลือกตามภาษา
 
   const [output, setOutput] = useState<'video' | 'image'>('video');
   const [hasPresenter, setHasPresenter] = useState(true);
@@ -169,7 +181,8 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
   }
   function applyPreset(p: typeof PRESETS[number]) {
     setOutput('video');
-    setHasPresenter(p.pres); setHasProduct(p.prod); setHasPlace(p.place);
+    setHasPresenter(p.pres); setHasProduct(p.prod);
+    setHasPlace((prev) => p.place || prev); // พรีเซ็ตเพิ่มสถานที่ได้ แต่ไม่ปลดที่ผู้ใช้ติ๊กไว้เอง
     setMood(p.mood); setConcept(p.concept); setShots([]);
   }
   async function onVoiceFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -307,9 +320,9 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
 
         {/* เริ่มเร็ว (ไม่บังคับ) */}
         <div className="mini-label">{T('เริ่มเร็ว (ไม่บังคับ · กดแล้วปรับต่อได้)', 'Quick start (optional)')}</div>
-        <div className="chips">
+        <div className="chips preset-row">
           {PRESETS.map((p) => (
-            <button type="button" key={p.id} className="chip" onClick={() => applyPreset(p)}>{p.th}</button>
+            <button type="button" key={p.id} className="chip preset" onClick={() => applyPreset(p)}>{T(p.th, p.en)}</button>
           ))}
         </div>
 
@@ -336,11 +349,11 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
             {presenterMode === 'ai' && (
               <div style={{ marginTop: 10 }}>
                 <div className="mini-label">{T('เพศ', 'Gender')}</div>
-                <div className="chips">{AV_GENDER.map((g) => <button type="button" key={g} className={'chip' + (avGender === g ? ' active' : '')} onClick={() => setAvGender(g)}>{g}</button>)}</div>
+                <div className="chips">{AV_GENDER.map((g) => <button type="button" key={g} className={'chip' + (avGender === g ? ' active' : '')} onClick={() => setAvGender(g)}>{tv(g)}</button>)}</div>
                 <div className="mini-label">{T('ช่วงอายุ', 'Age')}</div>
-                <div className="chips">{AV_AGE.map((g) => <button type="button" key={g} className={'chip' + (avAge === g ? ' active' : '')} onClick={() => setAvAge(g)}>{g}</button>)}</div>
+                <div className="chips">{AV_AGE.map((g) => <button type="button" key={g} className={'chip' + (avAge === g ? ' active' : '')} onClick={() => setAvAge(g)}>{tv(g)}</button>)}</div>
                 <div className="mini-label">{T('เชื้อชาติ / ลุค', 'Ethnicity / look')}</div>
-                <div className="chips">{AV_ETH.map((g) => <button type="button" key={g} className={'chip' + (avEth === g ? ' active' : '')} onClick={() => setAvEth(g)}>{g}</button>)}</div>
+                <div className="chips">{AV_ETH.map((g) => <button type="button" key={g} className={'chip' + (avEth === g ? ' active' : '')} onClick={() => setAvEth(g)}>{tv(g)}</button>)}</div>
               </div>
             )}
             {presenterMode === 'upload' && (
@@ -436,19 +449,19 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
             <div className="grid grid-2">
               <label className="field"><span>{T('ภาษาที่พูด', 'Spoken language')}</span>
                 <select value={spokenLang} onChange={(e) => setSpokenLang(e.target.value)}>
-                  {['ไทย', 'อังกฤษ', 'ไทย + ซับอังกฤษ', 'จีน'].map((x) => <option key={x}>{x}</option>)}
+                  {['ไทย', 'อังกฤษ', 'ไทย + ซับอังกฤษ', 'จีน'].map((x) => <option key={x} value={x}>{tv(x)}</option>)}
                 </select></label>
               {hasPresenter && (
                 <label className="field"><span>{T('เพศพรีเซนเตอร์', 'Presenter gender')}</span>
                   <select value={presenterGender} onChange={(e) => setPresenterGender(e.target.value)}>
-                    {['อัตโนมัติ (ตามรูป)', 'หญิง', 'ชาย'].map((x) => <option key={x}>{x}</option>)}
+                    {['อัตโนมัติ (ตามรูป)', 'หญิง', 'ชาย'].map((x) => <option key={x} value={x}>{tv(x)}</option>)}
                   </select></label>
               )}
             </div>
 
             {/* mood */}
             <div className="mini-label">{T('โทน / อารมณ์วิดีโอ', 'Tone / mood')}</div>
-            <div className="chips">{MOODS.map((m) => <button type="button" key={m} className={'chip' + (mood === m ? ' active' : '')} onClick={() => setMood(m)}>{m}</button>)}</div>
+            <div className="chips">{MOODS.map((m) => <button type="button" key={m} className={'chip' + (mood === m ? ' active' : '')} onClick={() => setMood(m)}>{tv(m)}</button>)}</div>
           </>
         )}
 
@@ -457,14 +470,14 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
           <>
             <label className="field"><span>{T('คอนเซ็ปต์', 'Concept')}</span>
               <select value={concept} onChange={(e) => setConcept(e.target.value)}>
-                {CONCEPTS.map((c) => <option key={c.id} value={c.id}>{c.th}</option>)}
+                {CONCEPTS.map((c) => <option key={c.id} value={c.id}>{T(c.th, c.en)}</option>)}
               </select>
             </label>
-            {concept === 'other' && <input type="text" value={conceptText} onChange={(e) => setConceptText(e.target.value)} placeholder="พิมพ์คอนเซ็ปต์เอง" style={{ marginTop: 8 }} />}
+            {concept === 'other' && <input type="text" value={conceptText} onChange={(e) => setConceptText(e.target.value)} placeholder={T('พิมพ์คอนเซ็ปต์เอง', 'Type your own concept')} style={{ marginTop: 8 }} />}
 
-            <label className="field"><span>{T('ชื่อสินค้า', 'Product name')}</span><input type="text" name="bfName" placeholder="เช่น เซรั่มหน้าใส Glow" /></label>
-            <label className="field"><span>{T('ราคา', 'Price')}</span><input type="text" name="bfPrice" placeholder="เช่น 199 บาท" /></label>
-            <label className="field"><span>{T('จุดขาย / อยากบอกอะไร (มีโปรถึงวันไหนใส่ตรงนี้ได้)', 'Key selling point (add promo dates here)')}</span><textarea name="bfPoint" rows={2} placeholder="เช่น ใช้ 2 สัปดาห์หน้าใสขึ้น · ลดถึง 30 มิ.ย." /></label>
+            <label className="field"><span>{T('ชื่อสินค้า', 'Product name')}</span><input type="text" name="bfName" placeholder={T('เช่น เซรั่มหน้าใส Glow', 'e.g. Glow brightening serum')} /></label>
+            <label className="field"><span>{T('ราคา', 'Price')}</span><input type="text" name="bfPrice" placeholder={T('เช่น 199 บาท', 'e.g. 199 THB')} /></label>
+            <label className="field"><span>{T('จุดขาย / อยากบอกอะไร (มีโปรถึงวันไหนใส่ตรงนี้ได้)', 'Key selling point (add promo dates here)')}</span><textarea name="bfPoint" rows={2} placeholder={T('เช่น ใช้ 2 สัปดาห์หน้าใสขึ้น · ลดถึง 30 มิ.ย.', 'e.g. brighter in 2 weeks · sale until Jun 30')} /></label>
 
             <div className="mini-label">{T('ภาษาของบทพูด', 'Script language')}</div>
             <div className="seg">
@@ -517,16 +530,16 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
                 </div>
                 <div className="acc-body">
                   <div className="mini-label">{T('เพศเสียง', 'Voice gender')}</div>
-                  <div className="chips">{V_GENDER.map((g) => <button type="button" key={g} className={'chip' + (vGender === g ? ' active' : '')} onClick={() => setVGender(g)}>{g}</button>)}</div>
+                  <div className="chips">{V_GENDER.map((g) => <button type="button" key={g} className={'chip' + (vGender === g ? ' active' : '')} onClick={() => setVGender(g)}>{tv(g)}</button>)}</div>
                   <div className="mini-label">{T('ช่วงอายุเสียง', 'Voice age')}</div>
-                  <div className="chips">{V_AGE.map((g) => <button type="button" key={g} className={'chip' + (vAge === g ? ' active' : '')} onClick={() => setVAge(g)}>{g}</button>)}</div>
+                  <div className="chips">{V_AGE.map((g) => <button type="button" key={g} className={'chip' + (vAge === g ? ' active' : '')} onClick={() => setVAge(g)}>{tv(g)}</button>)}</div>
                   <div className="mini-label">{T('โทนเสียง', 'Voice tone')}</div>
-                  <div className="chips">{V_TONE.map((g) => <button type="button" key={g} className={'chip' + (vTone === g ? ' active' : '')} onClick={() => setVTone(g)}>{g}</button>)}</div>
+                  <div className="chips">{V_TONE.map((g) => <button type="button" key={g} className={'chip' + (vTone === g ? ' active' : '')} onClick={() => setVTone(g)}>{tv(g)}</button>)}</div>
                   <div className="mini-label">{T('เลือกเสียง', 'Pick a voice')}</div>
                   <div className="voice-cards">
                     {VOICES.map((v) => (
                       <div key={v.id} className={'vcard' + (vPick === v.id ? ' active' : '')} onClick={() => setVPick(v.id)}>
-                        <div className="vplay">▶</div><div className="vn">{v.n}</div><div className="vd">{v.d}</div>
+                        <div className="vplay">▶</div><div className="vn">{v.n}</div><div className="vd">{tv(v.d)}</div>
                       </div>
                     ))}
                   </div>
