@@ -240,51 +240,7 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
       <input type="hidden" name="extra" value={extra} />
 
       <div className="card" style={{ minWidth: 0 }}>
-        {/* format */}
-        <span className="muted" style={{ fontSize: 14 }}>{T('รูปแบบวิดีโอ', 'Video format')}</span>
-        <div className="fmt-grid" style={{ marginTop: 8 }}>
-          {FORMATS.map((f) => (
-            <button type="button" key={f.id} className={'fmt' + (format === f.id ? ' active' : '')} onClick={() => { setFormat(f.id); setShots([]); }}>
-              {format === f.id && <span className="fcheck">✓</span>}
-              <div className="fi"><FmtIcon name={f.icon} /></div><div className="ft">{T(f.th, f.en)}</div><div className="fd">{T(f.dth, f.den)}</div>
-              <span className={'pill ' + f.tagcls} style={{ marginTop: 6 }}>{T(f.tag, f.tagEn)}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* presenter (ugc) */}
-        {fInfo.presenter && (
-          <>
-            <div className="mini-label">{T('พรีเซนเตอร์', 'Presenter')}</div>
-            <div className="seg">
-              {[['upload', T('อัพรูปเอง', 'Upload')], ['ai', T('สร้าง Avatar (AI)', 'AI avatar')]].map(([v, t]) => (
-                <button type="button" key={v} className={presenterMode === v ? 'active' : ''} onClick={() => setPresenterMode(v)}>{t}</button>
-              ))}
-            </div>
-            {presenterMode === 'ai' && (
-              <div style={{ marginTop: 10 }}>
-                <div className="mini-label">{T('เพศ', 'Gender')}</div>
-                <div className="chips">{AV_GENDER.map((g) => <button type="button" key={g} className={'chip' + (avGender === g ? ' active' : '')} onClick={() => setAvGender(g)}>{g}</button>)}</div>
-                <div className="mini-label">{T('ช่วงอายุ', 'Age')}</div>
-                <div className="chips">{AV_AGE.map((g) => <button type="button" key={g} className={'chip' + (avAge === g ? ' active' : '')} onClick={() => setAvAge(g)}>{g}</button>)}</div>
-                <div className="mini-label">{T('เชื้อชาติ / ลุค', 'Ethnicity / look')}</div>
-                <div className="chips">{AV_ETH.map((g) => <button type="button" key={g} className={'chip' + (avEth === g ? ' active' : '')} onClick={() => setAvEth(g)}>{g}</button>)}</div>
-              </div>
-            )}
-          </>
-        )}
-
-        {/* platform / ratio */}
-        <div className="mini-label">{T('ลงที่ไหน (ตั้งสัดส่วน+ความยาวให้)', 'Post where (sets size + length)')}</div>
-        <div className="chips">
-          {PLATFORMS.map((p) => (
-            <button type="button" key={p.id} className={'chip' + (ratio === p.id ? ' active' : '')} onClick={() => pickPlatform(p.id)}>
-              {T(p.th, p.en)} · {p.id}
-            </button>
-          ))}
-        </div>
-
-        {/* brand */}
+        {/* แบรนด์ (ย้ายขึ้นบนสุด) */}
         {brands.length > 0 && (
           <>
             <label className="field"><span>{T('สร้างให้แบรนด์ไหน', 'For which brand')}</span>
@@ -319,14 +275,42 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
           </>
         )}
 
-        {/* product images */}
-        <label className="field"><span>{T('อัพรูปสินค้า', 'Upload product photos')}{fInfo.presenter ? T(' / พรีเซนเตอร์', ' / presenter') : ''}</span></label>
-        {fInfo.presenter && presenterMode === 'upload' && (
-          <label className="consent" style={{ marginTop: 0, marginBottom: 8 }}>
-            <input type="checkbox" checked={consentPhoto} onChange={(e) => setConsentPhoto(e.target.checked)} />
-            <span className="ct">{T('ฉันมีสิทธิ์ใช้รูปพรีเซนเตอร์นี้ และรับผิดชอบเรื่องลิขสิทธิ์เอง (ไม่ใช้รูปดารา/คนอื่นที่ไม่ได้ขออนุญาต)', 'I have rights to this presenter photo and accept copyright responsibility')}</span>
-          </label>
+        {/* format */}
+        <span className="muted" style={{ fontSize: 14 }}>{T('รูปแบบวิดีโอ', 'Video format')}</span>
+        <div className="fmt-grid" style={{ marginTop: 8 }}>
+          {FORMATS.map((f) => (
+            <button type="button" key={f.id} className={'fmt' + (format === f.id ? ' active' : '')} onClick={() => { setFormat(f.id); setShots([]); }}>
+              {format === f.id && <span className="fcheck">✓</span>}
+              <div className="fi"><FmtIcon name={f.icon} /></div><div className="ft">{T(f.th, f.en)}</div><div className="fd">{T(f.dth, f.den)}</div>
+              <span className={'pill ' + f.tagcls} style={{ marginTop: 6 }}>{T(f.tag, f.tagEn)}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* presenter (ugc) */}
+        {fInfo.presenter && (
+          <>
+            <div className="mini-label">{T('พรีเซนเตอร์', 'Presenter')}</div>
+            <div className="seg">
+              {[['upload', T('อัพรูปเอง', 'Upload')], ['ai', T('สร้าง Avatar (AI)', 'AI avatar')]].map(([v, t]) => (
+                <button type="button" key={v} className={presenterMode === v ? 'active' : ''} onClick={() => setPresenterMode(v)}>{t}</button>
+              ))}
+            </div>
+            {presenterMode === 'ai' && (
+              <div style={{ marginTop: 10 }}>
+                <div className="mini-label">{T('เพศ', 'Gender')}</div>
+                <div className="chips">{AV_GENDER.map((g) => <button type="button" key={g} className={'chip' + (avGender === g ? ' active' : '')} onClick={() => setAvGender(g)}>{g}</button>)}</div>
+                <div className="mini-label">{T('ช่วงอายุ', 'Age')}</div>
+                <div className="chips">{AV_AGE.map((g) => <button type="button" key={g} className={'chip' + (avAge === g ? ' active' : '')} onClick={() => setAvAge(g)}>{g}</button>)}</div>
+                <div className="mini-label">{T('เชื้อชาติ / ลุค', 'Ethnicity / look')}</div>
+                <div className="chips">{AV_ETH.map((g) => <button type="button" key={g} className={'chip' + (avEth === g ? ' active' : '')} onClick={() => setAvEth(g)}>{g}</button>)}</div>
+              </div>
+            )}
+          </>
         )}
+
+        {/* อัพรูปสินค้า / พรีเซนเตอร์ (ติดใต้ปุ่มพรีเซนเตอร์เลย) */}
+        <label className="field" style={{ marginTop: 10 }}><span>{fInfo.presenter && presenterMode === 'upload' ? T('อัพรูปพรีเซนเตอร์ / สินค้า (กดช่อง + ด้านล่าง)', 'Upload presenter / product photo (tap + below)') : T('อัพรูปสินค้า (กดช่อง + ด้านล่าง)', 'Upload product photos (tap + below)')}</span></label>
         <div className="uploads">
           {images.map((im, i) => (
             <div key={i} style={{ position: 'relative' }}>
@@ -335,6 +319,23 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
             </div>
           ))}
           <label className="up-add">{uploading ? '…' : '+'}<input type="file" accept="image/*" multiple hidden onChange={onPick} /></label>
+        </div>
+        {/* ยินยอมลิขสิทธิ์รูป — โผล่ใต้รูปเฉพาะตอนอัพรูปพรีเซนเตอร์แล้วเท่านั้น */}
+        {fInfo.presenter && presenterMode === 'upload' && images.length > 0 && (
+          <label className="consent" style={{ marginTop: 8 }}>
+            <input type="checkbox" checked={consentPhoto} onChange={(e) => setConsentPhoto(e.target.checked)} />
+            <span className="ct">{T('ฉันมีสิทธิ์ใช้รูปพรีเซนเตอร์นี้ และรับผิดชอบเรื่องลิขสิทธิ์เอง (ไม่ใช้รูปดารา/คนอื่นที่ไม่ได้ขออนุญาต)', 'I have rights to this presenter photo and accept copyright responsibility')}</span>
+          </label>
+        )}
+
+        {/* platform / ratio */}
+        <div className="mini-label">{T('ลงที่ไหน (ตั้งสัดส่วน+ความยาวให้)', 'Post where (sets size + length)')}</div>
+        <div className="chips">
+          {PLATFORMS.map((p) => (
+            <button type="button" key={p.id} className={'chip' + (ratio === p.id ? ' active' : '')} onClick={() => pickPlatform(p.id)}>
+              {T(p.th, p.en)} · {p.id}
+            </button>
+          ))}
         </div>
 
         {isImage ? (

@@ -58,7 +58,24 @@ textarea { resize: vertical; }
 .nav a.link:hover { color: var(--ink); }
 .nav a.link.active { color: var(--ink); background: var(--yellow); }
 .nav .spacer { flex: 1; }
-.nav .credit { background: #fff; border: 1.5px solid var(--yellow-deep); border-radius: 999px; padding: 6px 15px; font-weight: 700; font-size: 14px; }
+.nav .credit { background: #fff; border: 1.5px solid var(--yellow-deep); border-radius: 999px; padding: 6px 15px; font-weight: 700; font-size: 14px; white-space: nowrap; }
+/* เดสก์ท็อป: โชว์เมนูปกติ ซ่อนแฮมเบอร์เกอร์ */
+.nav-links { display: flex; align-items: center; gap: 4px; }
+.nav-burger { display: none; }
+.nav-drawer { display: none; }
+/* มือถือ: ยุบเป็นแฮมเบอร์เกอร์ */
+@media (max-width: 820px) {
+  .nav-in { flex-wrap: nowrap; gap: 10px; padding: 11px 18px; }
+  .nav .logo { font-size: 30px; margin-right: 0; }
+  .nav-links { display: none; }
+  .nav-desk { display: none !important; }
+  .nav .credit { font-size: 13px; padding: 5px 13px; }
+  .nav-burger { display: inline-flex; align-items: center; justify-content: center; background: #fff; border: 1.5px solid var(--line-strong); border-radius: 10px; width: 42px; height: 42px; cursor: pointer; color: var(--ink); flex: none; }
+  .nav-drawer { display: flex; flex-direction: column; gap: 4px; padding: 6px 18px 16px; border-top: 1px solid var(--line); }
+  .nav-drawer .drawer-link { font-weight: 600; color: var(--ink); padding: 12px 14px; border-radius: 10px; font-size: 16px; }
+  .nav-drawer .drawer-link.active { background: var(--yellow); }
+  .nav-drawer .drawer-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
+}
 
 /* section label (gray uppercase, readable) */
 .eyebrow { display: none; }
@@ -249,6 +266,7 @@ input[type=color] { width: 46px; height: 36px; padding: 0; border: 1px solid var
 .auth-left .logo b { color: var(--yellow-deep); }
 .auth-lead { font-size: 34px; font-weight: 700; line-height: 1.35; }
 .auth-lead em { font-style: normal; background: linear-gradient(transparent 56%, var(--yellow) 56%); padding: 0 6px; }
+.auth-lead .nw { white-space: nowrap; }
 .auth-trial { background: transparent; border: none; border-radius: 0; padding: 0; display: flex; gap: 12px; align-items: flex-start; max-width: 560px; text-align: left; }
 .auth-trial .ic { font-size: 30px; line-height: 1; }
 .auth-trial .tt { font-weight: 700; font-size: 19px; }

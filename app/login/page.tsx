@@ -37,7 +37,7 @@ export default function LoginPage() {
         <div className="auth-left">
           <div className="auth-in">
             <div className="logo">Gen<b>It</b></div>
-            <div className="auth-lead">ร้านเล็ก ๆ ก็มีคลิปโฆษณา <em>สวย ๆ</em> ได้</div>
+            <div className="auth-lead"><span className="nw">ร้านเล็ก ๆ</span> <span className="nw">ก็มีคลิปโฆษณา</span> <span className="nw"><em>สวย ๆ</em> ได้</span></div>
             <div className="auth-trial">
               <div className="ic">🎁</div>
               <div>
