@@ -2,16 +2,29 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { createJobDraft } from '@/app/actions';
+import { aiDraftScripts } from '@/app/ai';
 import { useLang } from './LanguageProvider';
 
 type L = 'th' | 'en';
-const FORMATS = [
-  { id: 'ugc', icon: '🎤', th: 'พรีเซนเตอร์พูด', en: 'Talking presenter', dth: 'พูดรีวิว/แนะนำ · ไม่ต้องมีสินค้าก็ได้', den: 'Review/intro · product optional', tag: 'มีคน', presenter: true },
-  { id: 'hand', icon: '🤳', th: 'มือถือสินค้า', en: 'Hands only', dth: 'โชว์แค่มือ เช่น กำไล แหวน', den: 'Show hands only', tag: 'ไม่มีคน', presenter: false },
-  { id: 'food', icon: '🍜', th: 'อาหาร/ขนม', en: 'Food', dth: 'ภาพอาหารสวยๆ + ASMR/พากย์', den: 'Beautiful food + VO', tag: 'ไม่มีคน', presenter: false },
-  { id: 'product', icon: '📦', th: 'โชว์สินค้า', en: 'Product + VO', dth: 'เน้นภาพสินค้าหมุนโชว์', den: 'Product-focused', tag: 'ไม่มีคน', presenter: false },
-  { id: 'image', icon: '🖼️', th: 'สร้างรูปอย่างเดียว', en: 'Images only', dth: 'ได้ภาพสินค้าสวยๆ ไว้โพส · ถูกมาก', den: 'Just images · cheapest', tag: 'รูปภาพ', presenter: false },
+type TagCls = 'tag-person' | 'tag-none' | 'tag-photo';
+const FORMATS: { id: string; icon: string; th: string; en: string; dth: string; den: string; tag: string; tagEn: string; tagcls: TagCls; presenter: boolean }[] = [
+  { id: 'ugc', icon: 'mic', th: 'พรีเซนเตอร์พูด', en: 'Talking presenter', dth: 'พูดรีวิว/แนะนำ · ไม่ต้องมีสินค้าก็ได้', den: 'Review/intro · product optional', tag: 'มีคน', tagEn: 'Person', tagcls: 'tag-person', presenter: true },
+  { id: 'hand', icon: 'hand', th: 'มือถือสินค้า', en: 'Hands only', dth: 'โชว์แค่มือ เช่น กำไล แหวน', den: 'Show hands only', tag: 'ไม่มีคน', tagEn: 'No person', tagcls: 'tag-none', presenter: false },
+  { id: 'food', icon: 'food', th: 'อาหาร/ขนม', en: 'Food', dth: 'ภาพอาหารสวยๆ + ASMR/พากย์', den: 'Beautiful food + VO', tag: 'ไม่มีคน', tagEn: 'No person', tagcls: 'tag-none', presenter: false },
+  { id: 'product', icon: 'box', th: 'โชว์สินค้า', en: 'Product + VO', dth: 'เน้นภาพสินค้าหมุนโชว์', den: 'Product-focused', tag: 'ไม่มีคน', tagEn: 'No person', tagcls: 'tag-none', presenter: false },
+  { id: 'image', icon: 'image', th: 'สร้างรูปอย่างเดียว', en: 'Images only', dth: 'ได้ภาพสินค้าสวยๆ ไว้โพส · ถูกมาก', den: 'Just images · cheapest', tag: 'รูปภาพ', tagEn: 'Photos', tagcls: 'tag-photo', presenter: false },
 ];
+function FmtIcon({ name }: { name: string }) {
+  const c = { width: 26, height: 26, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+  switch (name) {
+    case 'mic': return (<svg {...c}><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10a7 7 0 0 0 14 0M12 17v4M8 21h8" /></svg>);
+    case 'hand': return (<svg {...c}><path d="M8 13V5a1.5 1.5 0 0 1 3 0v6M11 11V4a1.5 1.5 0 0 1 3 0v7M14 11.5V6a1.5 1.5 0 0 1 3 0v8a6 6 0 0 1-6 6h-1a5 5 0 0 1-4-2l-2.5-3.2a1.5 1.5 0 0 1 2.3-1.9L8 14" /></svg>);
+    case 'food': return (<svg {...c}><path d="M4 3v7a3 3 0 0 0 6 0V3M7 3v18M17 3c-1.5 0-3 1.8-3 5s1.5 4 3 4v9" /></svg>);
+    case 'box': return (<svg {...c}><path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8" /></svg>);
+    case 'image': return (<svg {...c}><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg>);
+    default: return null;
+  }
+}
 const PLATFORMS = [
   { id: '9:16', th: 'แนวตั้ง', en: 'Vertical', sub: 'TikTok · Reels · Shorts', dur: 20, w: 250 },
   { id: '1:1', th: 'จัตุรัส', en: 'Square', sub: 'ฟีด FB / IG', dur: 15, w: 320 },
@@ -55,7 +68,10 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
   const [conceptText, setConceptText] = useState('');
   const [scriptLang, setScriptLang] = useState<L>('th');
   const [script, setScript] = useState('');
-  const [drafts, setDrafts] = useState<string[]>([]);
+  const [drafts, setDrafts] = useState<{ hook: string; text: string }[]>([]);
+  const [drafting, setDrafting] = useState(false);
+  const [draftErr, setDraftErr] = useState('');
+  const formRef = useRef<HTMLFormElement>(null);
   const [spokenLang, setSpokenLang] = useState('ไทย');
   const [presenterGender, setPresenterGender] = useState('อัตโนมัติ (ตามรูป)');
   const [imgMain, setImgMain] = useState('');
@@ -171,9 +187,21 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
       timerRef.current = setInterval(() => setRecSec((s) => s + 1), 1000);
     } catch { setErr('เข้าถึงไมโครโฟนไม่ได้ — อนุญาตไมค์ก่อน'); }
   }
-  function draftScripts() {
-    const hooks = ['เปิดด้วยปัญหา', 'เปิดด้วยข้อเสนอ', 'เปิดด้วยคำถาม'];
-    setDrafts(hooks.map((h) => `[${h}] (ตัวอย่างบท — จะต่อ AI จริงในเฟสถัดไป) ... ทักแชทสั่งเลยก่อนของหมดนะ!`));
+  async function draftScripts() {
+    setDrafting(true); setDraftErr(''); setDrafts([]);
+    const fd = new FormData(formRef.current!);
+    const brief = [
+      fd.get('bfName') && `สินค้า: ${fd.get('bfName')}`,
+      fd.get('bfPrice') && `ราคา: ${fd.get('bfPrice')}`,
+      fd.get('bfPoint') && `จุดขาย: ${fd.get('bfPoint')}`,
+      fd.get('bfPromo') && `โปรถึง: ${fd.get('bfPromo')}`,
+      brandDesc && `แบรนด์: ${brandDesc}`,
+    ].filter(Boolean).join('\n');
+    const conceptLabel = concept === 'other' ? conceptText : (CONCEPTS.find((c) => c.id === concept)?.th ?? '');
+    const res = await aiDraftScripts({ productInfo: brief, concept: conceptLabel, tone: mood, lang: scriptLang, count: 3 });
+    setDrafting(false);
+    if (res.error) { setDraftErr(res.error); return; }
+    setDrafts(res.scripts ?? []);
   }
   function planShots() { setShots((SHOT_SETS[format] ?? SHOT_SETS.product).map((n) => ({ name: n, desc: '' }))); }
   function moveShot(i: number, d: number) {
@@ -192,7 +220,7 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
   const TH = 260, TW = { '9:16': 26, '1:1': 46, '16:9': 60 }[ratio] ?? 46;
 
   return (
-    <form action={createJobDraft} className="gen-wrap">
+    <form ref={formRef} action={createJobDraft} className="gen-wrap">
       <input type="hidden" name="format" value={format} />
       <input type="hidden" name="ratio" value={ratio} />
       <input type="hidden" name="concept" value={concept === 'other' ? conceptText : concept} />
@@ -217,8 +245,9 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
         <div className="fmt-grid" style={{ marginTop: 8 }}>
           {FORMATS.map((f) => (
             <button type="button" key={f.id} className={'fmt' + (format === f.id ? ' active' : '')} onClick={() => { setFormat(f.id); setShots([]); }}>
-              <div className="fi">{f.icon}</div><div className="ft">{T(f.th, f.en)}</div><div className="fd">{T(f.dth, f.den)}</div>
-              <span className="pill" style={{ marginTop: 6, fontSize: 11 }}>{f.tag}</span>
+              {format === f.id && <span className="fcheck">✓</span>}
+              <div className="fi"><FmtIcon name={f.icon} /></div><div className="ft">{T(f.th, f.en)}</div><div className="fd">{T(f.dth, f.den)}</div>
+              <span className={'pill ' + f.tagcls} style={{ marginTop: 6 }}>{T(f.tag, f.tagEn)}</span>
             </button>
           ))}
         </div>
@@ -368,14 +397,18 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
               ))}
             </div>
             <div style={{ marginTop: 10 }}>
-              <button type="button" className="btn-ghost" style={{ padding: '10px 18px', borderRadius: 10, cursor: 'pointer', font: 'inherit', fontWeight: 600 }} onClick={draftScripts}>✦ {T('ให้ AI ร่างบทให้ 3 แบบ', 'Let AI draft 3 scripts')}</button>
+              <button type="button" className="btn-ghost" style={{ padding: '10px 18px', borderRadius: 10, cursor: 'pointer', font: 'inherit', fontWeight: 600 }} onClick={draftScripts} disabled={drafting}>
+                ✦ {drafting ? T('AI กำลังคิด…', 'AI thinking…') : T('ให้ AI ร่างบทให้ 3 แบบ', 'Let AI draft 3 scripts')}
+              </button>
             </div>
+            {draftErr && <p className="err">{draftErr}</p>}
             {drafts.length > 0 && (
               <div className="grid" style={{ marginTop: 10 }}>
                 {drafts.map((d, i) => (
-                  <div key={i} className="card" style={{ padding: 12, cursor: 'pointer', borderColor: script === d ? 'var(--ink)' : 'var(--line)' }} onClick={() => setScript(d)}>
-                    <div style={{ fontSize: 13.5 }}>{d}</div>
-                    <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{script === d ? '✓ เลือกแล้ว' : 'แตะเพื่อเลือกบทนี้'}</div>
+                  <div key={i} className="card" style={{ padding: 14, cursor: 'pointer', borderColor: script === d.text ? 'var(--ink)' : 'var(--line)' }} onClick={() => setScript(d.text)}>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--yellow-deep)' }}>{d.hook}</div>
+                    <div style={{ fontSize: 13.5, marginTop: 4, whiteSpace: 'pre-wrap' }}>{d.text}</div>
+                    <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>{script === d.text ? '✓ เลือกบทนี้แล้ว' : 'แตะเพื่อเลือกบทนี้'}</div>
                   </div>
                 ))}
               </div>
@@ -499,7 +532,10 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
       {/* preview */}
       <div className="preview-panel">
         <div className="card" style={{ padding: 16 }}>
-          <div className="muted" style={{ fontSize: 13, marginBottom: 10, textAlign: 'center' }}>{T('ตัวอย่าง', 'Preview')} ({ratio})</div>
+          <div className="pv-head">
+            <span className="pvt">{T('ตัวอย่าง', 'PREVIEW')} ({ratio})</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" /></svg>
+          </div>
           <div className="pv-frame" style={{ width: pInfo.w, maxWidth: '100%', aspectRatio: ratio.replace(':', ' / ') }}>
             {firstPreview ? <img src={firstPreview} alt="" /> : <div className="pv-empty">📹<br />{isImage ? T('รูปจะขึ้นตรงนี้', 'Image here') : T('วิดีโอจะขึ้นตรงนี้', 'Video here')}</div>}
             {logo && <div style={{ position: 'absolute', top: 8, right: 8, background: 'var(--yellow)', color: '#000', borderRadius: 6, padding: '2px 7px', fontSize: 11, fontWeight: 700 }}>LOGO</div>}
