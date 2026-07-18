@@ -34,11 +34,10 @@ export default function LoginPage() {
 
   return (
     <main className="auth">
-      <div className="auth-top">
         <div className="auth-left">
           <div className="auth-in">
-            <div className="logo">Gen<b>It</b></div>
-            <div className="auth-lead">ร้านเล็ก ๆ<br />ก็มีคลิปโฆษณา<br /><em>สวย ๆ</em> ได้</div>
+            <div className="auth-logocard"><div className="logo">Gen<b>It</b></div></div>
+            <div className="auth-lead">ร้านเล็ก ๆ ก็มีคลิปโฆษณา <em>สวย ๆ</em> ได้</div>
             <div className="auth-trial">
               <div className="ic">🎁</div>
               <div>
@@ -66,7 +65,7 @@ export default function LoginPage() {
             </form>
             {err && <p className="err">{err}</p>}
             {msg && <p className="ok">{msg}</p>}
-            <p className="muted" style={{ marginTop: 20, fontSize: 14 }}>
+            <p className="muted" style={{ marginTop: 20, fontSize: 15 }}>
               {mode === 'login' ? 'ยังไม่มีบัญชี? ' : 'มีบัญชีแล้ว? '}
               <a style={{ color: 'var(--yellow-deep)', cursor: 'pointer', fontWeight: 600 }}
                 onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setErr(''); setMsg(''); }}>
@@ -75,7 +74,6 @@ export default function LoginPage() {
             </p>
           </div>
         </div>
-      </div>
 
       <div className="auth-band"><img src="/characters/hero.png" alt="ร้านค้า SME" /></div>
     </main>
