@@ -111,7 +111,7 @@ export async function createJobDraft(formData: FormData) {
     );
   }
 
-  const { error } = await supabase.from('jobs').insert({
+  const { data: inserted, error } = await supabase.from('jobs').insert({
     user_id: user.id,
     brand_id: brandId,
     type,
@@ -128,12 +128,12 @@ export async function createJobDraft(formData: FormData) {
     shots,
     output_urls: images.length ? { inputs: images } : null,
     credits_cost: credits,
-    status: 'draft',
+    status: 'queued',              // เข้าคิวรอเจนจริงด้วย fal.ai (หน้า /jobs/[id] จะเริ่มให้)
     watermarked: true,             // เดโม: ถือเป็นงานฟรี -> trigger ตั้ง expires_at +15 วันให้เอง
     consent_marketing: consent,
-  });
+  }).select('id').single();
   if (error) throw new Error(error.message);
   revalidatePath('/history');
   revalidatePath('/dashboard');
-  redirect('/history');
+  redirect(`/jobs/${inserted!.id}`);
 }
