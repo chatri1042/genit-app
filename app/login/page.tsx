@@ -36,13 +36,15 @@ export default function LoginPage() {
     <main className="auth">
       <div className="auth-top">
         <div className="auth-left">
-          <div className="logo">Gen<b>It</b></div>
-          <div className="auth-lead">ร้านเล็ก ๆ<br />ก็มีคลิปโฆษณา<br /><em>สวย ๆ</em> ได้</div>
-          <div className="auth-trial">
-            <div className="ic">🎁</div>
-            <div>
-              <div className="tt">ทดลองฟรี 1 สิทธิ์ต่อบัญชี</div>
-              <div className="td">สมัครแล้วรับเครดิตทดลองทันที ลองสร้างงานจริงได้เลย ไม่ต้องผูกบัตร (วิดีโอทดลองสูงสุด 10 วิ · มีลายน้ำ)</div>
+          <div className="auth-in">
+            <div className="logo">Gen<b>It</b></div>
+            <div className="auth-lead">ร้านเล็ก ๆ<br />ก็มีคลิปโฆษณา<br /><em>สวย ๆ</em> ได้</div>
+            <div className="auth-trial">
+              <div className="ic">🎁</div>
+              <div>
+                <div className="tt">ทดลองฟรี 1 สิทธิ์ต่อบัญชี</div>
+                <div className="td">สมัครแล้วรับเครดิตทดลองทันที ลองสร้างงานจริงได้เลย ไม่ต้องผูกบัตร (วิดีโอทดลองสูงสุด 10 วิ · มีลายน้ำ)</div>
+              </div>
             </div>
           </div>
         </div>

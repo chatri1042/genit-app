@@ -40,7 +40,7 @@ export default async function BrandsPage() {
           )}
         </div>
       </div>
-      <PageChar name="fashion" side="right" width={380} />
+      <PageChar name="fashion" side="right" width={260} />
     </>
   );
 }

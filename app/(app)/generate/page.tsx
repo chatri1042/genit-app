@@ -14,7 +14,7 @@ export default async function GeneratePage() {
       <h1>บรีฟงานใหม่</h1>
       <p className="muted">เลือกรูปแบบ อัพรูปสินค้า แล้วกรอกบรีฟ — ระบบจะบันทึกเป็นงานจริงในบัญชีคุณ</p>
       <GenerateForm brands={brands ?? []} />
-      <PageChar name="skate" side="left" width={340} />
+      <PageChar name="skate" side="left" width={260} />
     </>
   );
 }

@@ -45,7 +45,7 @@ export default async function PricingPage() {
         <div className="cg-item"><div className="cg-cr">1</div><div><div className="cg-t">ฟังเสียง / พรีวิวภาพ</div><div className="cg-s">ลองก่อนจ่ายค่าวิดีโอเต็ม</div></div></div>
       </div>
       <p className="muted" style={{ fontSize: 13, marginTop: 18 }}>* ปุ่มซื้อยังเป็นตัวอย่าง — ระบบชำระเงิน (PromptPay/บัตร) จะต่อในเฟสถัดไป</p>
-      <PageChar name="plant" side="right" width={400} />
+      <PageChar name="plant" side="right" width={240} />
     </>
   );
 }

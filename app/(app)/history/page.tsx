@@ -62,7 +62,7 @@ export default async function HistoryPage() {
       ) : (
         <div className="empty" style={{ marginTop: 20 }}>ยังไม่มีงาน — ไปที่ “สร้างวิดีโอ” เพื่อบันทึกงานแรก</div>
       )}
-      <PageChar name="repair" side="right" width={420} />
+      <PageChar name="repair" side="right" width={300} />
     </>
   );
 }
