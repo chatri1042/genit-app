@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import PageChar from '@/components/PageChar';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,10 +44,8 @@ export default async function PricingPage() {
         <div className="cg-item"><div className="cg-cr">15</div><div><div className="cg-t">โชว์สินค้า 20 วิ</div><div className="cg-s">30 วิ ≈ 22 เครดิต · ตัดสลับหลายช็อต</div></div></div>
         <div className="cg-item"><div className="cg-cr">1</div><div><div className="cg-t">ฟังเสียง / พรีวิวภาพ</div><div className="cg-s">ลองก่อนจ่ายค่าวิดีโอเต็ม</div></div></div>
       </div>
-      <div className="card" style={{ marginTop: 16, background: 'var(--yellow-soft)', borderColor: 'var(--yellow-deep)' }}>
-        <b>ยุติธรรม & ปลอดภัย:</b> ระบบโชว์จำนวนเครดิตให้เห็นก่อนกดสร้างทุกครั้ง (ยิ่งยาวยิ่งใช้มาก) · ถ้าเจนออกมาเพี้ยน เจนใหม่ให้ฟรี · ทดลองฟรี 1 สิทธิ์ต่อเบอร์
-      </div>
       <p className="muted" style={{ fontSize: 13, marginTop: 18 }}>* ปุ่มซื้อยังเป็นตัวอย่าง — ระบบชำระเงิน (PromptPay/บัตร) จะต่อในเฟสถัดไป</p>
+      <PageChar name="plant" side="right" width={210} />
     </>
   );
 }

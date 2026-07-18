@@ -1,5 +1,5 @@
 :root {
-  --bg: #F6F7F9;          /* พื้นหลังเทาอ่อนสว่าง */
+  --bg: #F4F2EC;          /* พื้นหลังโทนอุ่น (ให้เข้ากับภาพประกอบ) */
   --surface: #FFFFFF;
   --ink: #17171A;
   --muted: #6B6E76;
@@ -50,9 +50,9 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: var(--y
 textarea { resize: vertical; }
 
 /* top nav */
-.nav { position: sticky; top: 0; z-index: 30; background: rgba(246,247,249,.92); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+.nav { position: sticky; top: 0; z-index: 30; background: rgba(244,242,236,.9); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
 .nav-in { max-width: 1120px; margin: 0 auto; padding: 13px 24px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.nav .logo { font-weight: 800; font-size: 30px; letter-spacing: -1px; margin-right: 18px; }
+.nav .logo { font-weight: 800; font-size: 36px; letter-spacing: -1.2px; margin-right: 18px; }
 .nav .logo b { color: var(--ink); }
 .nav a.link { font-weight: 600; color: var(--muted); padding: 7px 12px; border-radius: 9px; font-size: 15px; }
 .nav a.link.active { color: var(--ink); }
@@ -232,3 +232,28 @@ input[type=color] { width: 46px; height: 36px; padding: 0; border: 1px solid var
 @keyframes spin { to { transform: rotate(360deg); } }
 .result-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
 .result-item { background: var(--bg); border: 1px solid var(--line); border-radius: 14px; padding: 10px; }
+
+/* ===== หน้าตาใหม่: คาแรกเตอร์ตามขอบ + doodle ===== */
+.pagechar { position: fixed; bottom: 0; z-index: 1; pointer-events: none; width: 180px; filter: drop-shadow(0 6px 10px rgba(0,0,0,.06)); }
+.pagechar.left { left: 0; }
+.pagechar.right { right: 0; }
+.doodle { position: absolute; pointer-events: none; z-index: 0; opacity: .9; }
+@media (max-width: 900px) { .pagechar { display: none; } }
+
+/* ===== หน้า login / สมัคร (ดีไซน์ใหม่ + ภาพประกอบ) ===== */
+.auth { min-height: calc(100vh - 0px); display: grid; grid-template-columns: 1.05fr .95fr; }
+.auth-left { background: linear-gradient(165deg, #FFFDF6 0%, #FBF3D2 100%); padding: 44px 46px; display: flex; flex-direction: column; gap: 22px; position: relative; overflow: hidden; }
+.auth-left .logo { font-size: 40px; font-weight: 800; letter-spacing: -1.4px; }
+.auth-left .logo b { color: var(--yellow-deep); }
+.auth-lead { font-size: 26px; font-weight: 700; line-height: 1.32; }
+.auth-lead em { font-style: normal; background: linear-gradient(transparent 60%, var(--yellow) 60%); padding: 0 3px; }
+.auth-trial { background: #fff; border: 1.5px solid var(--yellow-deep); border-radius: 16px; padding: 15px 17px; display: flex; gap: 12px; align-items: flex-start; }
+.auth-trial .ic { font-size: 24px; line-height: 1; }
+.auth-trial .tt { font-weight: 600; font-size: 15.5px; }
+.auth-trial .td { font-size: 13px; color: var(--muted); margin-top: 3px; line-height: 1.5; }
+.auth-hero { margin-top: auto; }
+.auth-hero img { width: 100%; max-width: 460px; display: block; }
+.auth-right { padding: 54px 46px; display: flex; flex-direction: column; justify-content: center; max-width: 460px; }
+.auth-right h1 { font-size: 25px; font-weight: 700; }
+.auth-right .sub { color: var(--muted); font-size: 14.5px; margin-top: 6px; margin-bottom: 8px; }
+@media (max-width: 820px) { .auth { grid-template-columns: 1fr; } .auth-left { display: none; } .auth-right { margin: 0 auto; padding: 48px 24px; } }

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import PageChar from '@/components/PageChar';
 
 export const dynamic = 'force-dynamic';
 
@@ -61,6 +62,7 @@ export default async function HistoryPage() {
       ) : (
         <div className="empty" style={{ marginTop: 20 }}>ยังไม่มีงาน — ไปที่ “สร้างวิดีโอ” เพื่อบันทึกงานแรก</div>
       )}
+      <PageChar name="repair" side="right" width={210} />
     </>
   );
 }
