@@ -6,25 +6,6 @@ import { aiDraftScripts } from '@/app/ai';
 import { useLang } from './LanguageProvider';
 
 type L = 'th' | 'en';
-type TagCls = 'tag-person' | 'tag-none' | 'tag-photo';
-const FORMATS: { id: string; icon: string; th: string; en: string; dth: string; den: string; tag: string; tagEn: string; tagcls: TagCls; presenter: boolean }[] = [
-  { id: 'ugc', icon: 'mic', th: 'พรีเซนเตอร์พูด', en: 'Talking presenter', dth: 'พูดรีวิว/แนะนำ · ไม่ต้องมีสินค้าก็ได้', den: 'Review/intro · product optional', tag: 'มีคน', tagEn: 'Person', tagcls: 'tag-person', presenter: true },
-  { id: 'hand', icon: 'hand', th: 'มือถือสินค้า', en: 'Hands only', dth: 'โชว์แค่มือ เช่น กำไล แหวน', den: 'Show hands only', tag: 'ไม่มีคน', tagEn: 'No person', tagcls: 'tag-none', presenter: false },
-  { id: 'food', icon: 'food', th: 'อาหาร/ขนม', en: 'Food', dth: 'ภาพอาหารสวยๆ + ASMR/พากย์', den: 'Beautiful food + VO', tag: 'ไม่มีคน', tagEn: 'No person', tagcls: 'tag-none', presenter: false },
-  { id: 'product', icon: 'box', th: 'โชว์สินค้า', en: 'Product + VO', dth: 'เน้นภาพสินค้าหมุนโชว์', den: 'Product-focused', tag: 'ไม่มีคน', tagEn: 'No person', tagcls: 'tag-none', presenter: false },
-  { id: 'image', icon: 'image', th: 'สร้างรูปอย่างเดียว', en: 'Images only', dth: 'ได้ภาพสินค้าสวยๆ ไว้โพส · ถูกมาก', den: 'Just images · cheapest', tag: 'รูปภาพ', tagEn: 'Photos', tagcls: 'tag-photo', presenter: false },
-];
-function FmtIcon({ name }: { name: string }) {
-  const c = { width: 26, height: 26, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
-  switch (name) {
-    case 'mic': return (<svg {...c}><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10a7 7 0 0 0 14 0M12 17v4M8 21h8" /></svg>);
-    case 'hand': return (<svg {...c}><path d="M8 13V5a1.5 1.5 0 0 1 3 0v6M11 11V4a1.5 1.5 0 0 1 3 0v7M14 11.5V6a1.5 1.5 0 0 1 3 0v8a6 6 0 0 1-6 6h-1a5 5 0 0 1-4-2l-2.5-3.2a1.5 1.5 0 0 1 2.3-1.9L8 14" /></svg>);
-    case 'food': return (<svg {...c}><path d="M4 3v7a3 3 0 0 0 6 0V3M7 3v18M17 3c-1.5 0-3 1.8-3 5s1.5 4 3 4v9" /></svg>);
-    case 'box': return (<svg {...c}><path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8" /></svg>);
-    case 'image': return (<svg {...c}><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg>);
-    default: return null;
-  }
-}
 const PLATFORMS = [
   { id: '9:16', th: 'แนวตั้ง', en: 'Vertical', sub: 'TikTok · Reels · Shorts', dur: 20, w: 250 },
   { id: '1:1', th: 'จัตุรัส', en: 'Square', sub: 'ฟีด FB / IG', dur: 15, w: 320 },
@@ -36,6 +17,15 @@ const CONCEPTS = [
   { id: 'intro', th: 'แนะนำสินค้า' }, { id: 'ba', th: 'เปรียบเทียบก่อน-หลัง' }, { id: 'launch', th: 'เปิดตัวสินค้าใหม่' },
   { id: 'clearance', th: 'Clearance Sale' }, { id: 'flash', th: 'Flash Sale' }, { id: 'other', th: '+ อื่นๆ (พิมพ์เอง)' },
 ];
+// ปุ่มเริ่มเร็ว (ไม่บังคับ) — กดแล้วติ๊กองค์ประกอบ + ตั้งโทน/คอนเซ็ปต์ให้ ปรับต่อได้
+const PRESETS: { id: string; th: string; pres: boolean; prod: boolean; place: boolean; mood: string; concept: string }[] = [
+  { id: 'review', th: 'รีวิวสินค้า', pres: true, prod: true, place: false, mood: 'น่าเชื่อถือ', concept: 'review' },
+  { id: 'talk', th: 'พรีเซนเตอร์พูด', pres: true, prod: false, place: false, mood: 'เป็นกันเอง', concept: 'review' },
+  { id: 'product', th: 'โชว์สินค้า', pres: false, prod: true, place: false, mood: 'สนุก ตื่นเต้น', concept: 'intro' },
+  { id: 'shop', th: 'โฆษณาร้าน / รีสอร์ท', pres: false, prod: false, place: true, mood: 'หรูหรา', concept: 'intro' },
+  { id: 'service', th: 'หมอดู / บริการ', pres: true, prod: false, place: true, mood: 'น่าเชื่อถือ', concept: 'intro' },
+  { id: 'food', th: 'อาหาร / ขนม', pres: false, prod: true, place: false, mood: 'สนุก ตื่นเต้น', concept: 'review' },
+];
 const V_GENDER = ['หญิง', 'ชาย'];
 const V_AGE = ['วัยรุ่น', 'ผู้ใหญ่', 'วัยกลางคน', 'สูงวัย'];
 const V_TONE = ['สดใสมีพลัง', 'นุ่มนวลเป็นมิตร', 'จริงจังน่าเชื่อถือ', 'ขี้เล่นสนุก', 'หรูหรา'];
@@ -43,12 +33,6 @@ const VOICES = [{ id: 'ploy', n: 'น้องพลอย', d: 'สดใส' }
 const AV_GENDER = ['หญิง', 'ชาย', 'ไม่ระบุ'];
 const AV_AGE = ['วัยรุ่น (18–25)', 'ผู้ใหญ่ (26–40)', 'วัยกลางคน (40–55)', 'สูงวัย (55+)'];
 const AV_ETH = ['ไทย', 'เอเชียตะวันออก', 'ลูกครึ่ง', 'ตะวันตก', 'เอเชียใต้', 'แอฟริกัน'];
-const SHOT_SETS: Record<string, string[]> = {
-  ugc: ['พรีเซนเตอร์เปิด', 'โชว์สินค้าใกล้ๆ', 'พรีเซนเตอร์ปิด + CTA'],
-  product: ['ฮีโร่สินค้า', 'ใช้งานจริง', 'โคลสอัพดีเทล', 'การ์ด CTA'],
-  hand: ['หยิบสินค้าขึ้นมา', 'โชว์บนมือ', 'โคลสอัพดีเทล', 'การ์ด CTA'],
-  food: ['จานเสิร์ฟสวยๆ', 'ตัก/ยืดชีส ASMR', 'โคลสอัพไอน้ำ', 'การ์ด CTA'],
-};
 
 type Brand = { id: string; name: string };
 type Asset = { path: string; url: string };
@@ -59,7 +43,12 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
   const { lang } = useLang();
   const T = (th: string, en: string) => (lang === 'th' ? th : en);
 
-  const [format, setFormat] = useState('ugc');
+  const [output, setOutput] = useState<'video' | 'image'>('video');
+  const [hasPresenter, setHasPresenter] = useState(true);
+  const [hasProduct, setHasProduct] = useState(true);
+  const [hasPlace, setHasPlace] = useState(false);
+  const [placeImg, setPlaceImg] = useState<{ path: string; preview: string } | null>(null);
+  const [placeDesc, setPlaceDesc] = useState('');
   const [ratio, setRatio] = useState('9:16');
   const [duration, setDuration] = useState(20);
   const [count, setCount] = useState(2);
@@ -96,6 +85,7 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
 
   const [presenterMode, setPresenterMode] = useState('upload');
   const [consentPhoto, setConsentPhoto] = useState(false);
+  const [presenterImg, setPresenterImg] = useState<{ path: string; preview: string } | null>(null);
   const [avGender, setAvGender] = useState('หญิง');
   const [avAge, setAvAge] = useState('ผู้ใหญ่ (26–40)');
   const [avEth, setAvEth] = useState('ไทย');
@@ -112,8 +102,7 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
   const [err, setErr] = useState('');
   const [shots, setShots] = useState<Shot[]>([]);
 
-  const isImage = format === 'image';
-  const fInfo = FORMATS.find((f) => f.id === format)!;
+  const isImage = output === 'image';
   const pInfo = PLATFORMS.find((p) => p.id === ratio)!;
 
   useEffect(() => {
@@ -131,13 +120,18 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
 
   const credits = useMemo(() => {
     if (isImage) return Math.max(1, count) * 3;
-    const rate = format === 'ugc' ? 0.45 : 1.0;
+    // วิดีโอ: ยิ่งมีองค์ประกอบเยอะยิ่งซับซ้อน (พูดอย่างเดียวถูกสุด · มีสถานที่แพงขึ้น)
+    let rate = 0.6;
+    if (hasProduct) rate = 1.0;
+    if (hasPlace) rate = 1.1;
     let c = duration * rate * count;
     if (thumbnail) c += thumbCount * 2;
     return Math.max(3, Math.ceil(c));
-  }, [format, duration, count, isImage, thumbnail, thumbCount]);
+  }, [duration, count, isImage, hasProduct, hasPlace, thumbnail, thumbCount]);
 
-  const firstPreview = images[0]?.preview
+  const firstPreview = (hasPresenter && presenterMode === 'upload' && presenterImg?.preview)
+    || images[0]?.preview
+    || placeImg?.preview
     || (useBrandImgs && pickedAssets.length ? brandAssets.find((a) => a.path === pickedAssets[0])?.url : '') || '';
 
   function pickPlatform(id: string) {
@@ -160,6 +154,23 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
     setUploading(true); setErr('');
     const out = await upload(files);
     setImages((p) => [...p, ...out]); setUploading(false); e.target.value = '';
+  }
+  async function onPickPresenter(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]; if (!file) return;
+    setUploading(true); setErr('');
+    const out = await upload([file], 'presenter-'); setUploading(false); e.target.value = '';
+    if (out[0]) setPresenterImg(out[0]);
+  }
+  async function onPickPlace(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]; if (!file) return;
+    setUploading(true); setErr('');
+    const out = await upload([file], 'place-'); setUploading(false); e.target.value = '';
+    if (out[0]) setPlaceImg(out[0]);
+  }
+  function applyPreset(p: typeof PRESETS[number]) {
+    setOutput('video');
+    setHasPresenter(p.pres); setHasProduct(p.prod); setHasPlace(p.place);
+    setMood(p.mood); setConcept(p.concept); setShots([]);
   }
   async function onVoiceFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]; if (!file) return;
@@ -194,7 +205,6 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
       fd.get('bfName') && `สินค้า: ${fd.get('bfName')}`,
       fd.get('bfPrice') && `ราคา: ${fd.get('bfPrice')}`,
       fd.get('bfPoint') && `จุดขาย: ${fd.get('bfPoint')}`,
-      fd.get('bfPromo') && `โปรถึง: ${fd.get('bfPromo')}`,
       brandDesc && `แบรนด์: ${brandDesc}`,
     ].filter(Boolean).join('\n');
     const conceptLabel = concept === 'other' ? conceptText : (CONCEPTS.find((c) => c.id === concept)?.th ?? '');
@@ -203,7 +213,17 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
     if (res.error) { setDraftErr(res.error); return; }
     setDrafts(res.scripts ?? []);
   }
-  function planShots() { setShots((SHOT_SETS[format] ?? SHOT_SETS.product).map((n) => ({ name: n, desc: '' }))); }
+  function planShots() {
+    // สร้างลำดับช็อตจากองค์ประกอบที่เลือก
+    const s: string[] = [];
+    if (hasPresenter) s.push('พรีเซนเตอร์เปิดเรื่อง');
+    if (hasPlace) s.push('ภาพสถานที่ / บรรยากาศ');
+    if (hasProduct) s.push('โชว์สินค้าใกล้ๆ');
+    if (hasPresenter && hasProduct) s.push('พรีเซนเตอร์ถือ / ใช้สินค้า');
+    if (s.length < 2) s.unshift('ภาพเปิด');
+    s.push('การ์ด CTA ปิดท้าย');
+    setShots(s.map((n) => ({ name: n, desc: '' })));
+  }
   function moveShot(i: number, d: number) {
     const j = i + d; if (j < 0 || j >= shots.length) return;
     const s = [...shots];[s[i], s[j]] = [s[j], s[i]]; setShots(s);
@@ -213,7 +233,9 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
   const extra = JSON.stringify({
     mood, image_text: { main: imgMain, sub: imgSub }, thumbnail, thumb_count: thumbCount, logo,
     voice_detail: voiceMode === 'ai' ? { gender: vGender, age: vAge, tone: vTone, voice: vPick, signature: vSignature } : {},
-    presenter: fInfo.presenter ? { mode: presenterMode, consent: consentPhoto, avatar: presenterMode === 'ai' ? { gender: avGender, age: avAge, ethnicity: avEth } : null } : null,
+    subjects: { presenter: hasPresenter, product: hasProduct, place: hasPlace },
+    presenter: hasPresenter ? { mode: presenterMode, consent: consentPhoto, photo: presenterMode === 'upload' ? (presenterImg?.path ?? null) : null, avatar: presenterMode === 'ai' ? { gender: avGender, age: avAge, ethnicity: avEth } : null } : null,
+    place: hasPlace ? { photo: placeImg?.path ?? null, desc: placeDesc } : null,
     spoken_lang: spokenLang, presenter_gender: presenterGender, ui_lang: lang,
   });
 
@@ -221,7 +243,7 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
 
   return (
     <form ref={formRef} action={createJobDraft} className="gen-wrap">
-      <input type="hidden" name="format" value={format} />
+      <input type="hidden" name="format" value={output === 'image' ? 'image' : 'video'} />
       <input type="hidden" name="ratio" value={ratio} />
       <input type="hidden" name="concept" value={concept === 'other' ? conceptText : concept} />
       <input type="hidden" name="script_lang" value={scriptLang} />
@@ -275,20 +297,35 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
           </>
         )}
 
-        {/* format */}
-        <span className="muted" style={{ fontSize: 14 }}>{T('รูปแบบวิดีโอ', 'Video format')}</span>
-        <div className="fmt-grid" style={{ marginTop: 8 }}>
-          {FORMATS.map((f) => (
-            <button type="button" key={f.id} className={'fmt' + (format === f.id ? ' active' : '')} onClick={() => { setFormat(f.id); setShots([]); }}>
-              {format === f.id && <span className="fcheck">✓</span>}
-              <div className="fi"><FmtIcon name={f.icon} /></div><div className="ft">{T(f.th, f.en)}</div><div className="fd">{T(f.dth, f.den)}</div>
-              <span className={'pill ' + f.tagcls} style={{ marginTop: 6 }}>{T(f.tag, f.tagEn)}</span>
-            </button>
+        {/* ผลลัพธ์: วิดีโอ / รูปภาพ */}
+        <span className="muted" style={{ fontSize: 14 }}>{T('อยากได้ผลลัพธ์แบบไหน', 'What do you want')}</span>
+        <div className="seg" style={{ marginTop: 8 }}>
+          {[['video', T('🎬 วิดีโอ', '🎬 Video')], ['image', T('🖼️ รูปภาพ', '🖼️ Images')]].map(([v, t]) => (
+            <button type="button" key={v} className={output === v ? 'active' : ''} onClick={() => { setOutput(v as 'video' | 'image'); setShots([]); }}>{t}</button>
           ))}
         </div>
 
-        {/* presenter (ugc) */}
-        {fInfo.presenter && (
+        {/* เริ่มเร็ว (ไม่บังคับ) */}
+        <div className="mini-label">{T('เริ่มเร็ว (ไม่บังคับ · กดแล้วปรับต่อได้)', 'Quick start (optional)')}</div>
+        <div className="chips">
+          {PRESETS.map((p) => (
+            <button type="button" key={p.id} className="chip" onClick={() => applyPreset(p)}>{p.th}</button>
+          ))}
+        </div>
+
+        {/* องค์ประกอบในคลิป — เลือกได้หลายอย่าง ไม่ต้องครบ */}
+        <div className="mini-label">{output === 'image' ? T('ในภาพมีอะไรบ้าง (เลือกได้หลายอย่าง)', 'What\'s in the image (pick any)') : T('ในวิดีโอมีอะไรบ้าง (เลือกได้หลายอย่าง)', 'What\'s in the video (pick any)')}</div>
+        <div className="chips">
+          <button type="button" className={'chip' + (hasPresenter ? ' active' : '')} onClick={() => { setHasPresenter(!hasPresenter); setShots([]); }}>{hasPresenter ? '✓ ' : ''}{T('พรีเซนเตอร์ (คน)', 'Presenter')}</button>
+          <button type="button" className={'chip' + (hasProduct ? ' active' : '')} onClick={() => { setHasProduct(!hasProduct); setShots([]); }}>{hasProduct ? '✓ ' : ''}{T('สินค้า', 'Product')}</button>
+          <button type="button" className={'chip' + (hasPlace ? ' active' : '')} onClick={() => { setHasPlace(!hasPlace); setShots([]); }}>{hasPlace ? '✓ ' : ''}{T('สถานที่ / บรรยากาศ', 'Place / scene')}</button>
+        </div>
+        {!hasPresenter && !hasProduct && !hasPlace && (
+          <div className="muted" style={{ fontSize: 13, marginTop: 8 }}>{T('เลือกอย่างน้อย 1 อย่าง หรือปล่อยว่างให้ AI คิดจากบรีฟก็ได้', 'Pick at least one, or leave empty and let AI decide from the brief')}</div>
+        )}
+
+        {/* พรีเซนเตอร์ — โผล่เมื่อเลือก */}
+        {hasPresenter && (
           <>
             <div className="mini-label">{T('พรีเซนเตอร์', 'Presenter')}</div>
             <div className="seg">
@@ -306,26 +343,64 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
                 <div className="chips">{AV_ETH.map((g) => <button type="button" key={g} className={'chip' + (avEth === g ? ' active' : '')} onClick={() => setAvEth(g)}>{g}</button>)}</div>
               </div>
             )}
+            {presenterMode === 'upload' && (
+              <>
+                <label className="field" style={{ marginTop: 10 }}><span>{T('รูปพรีเซนเตอร์ (คน · 1 รูป)', 'Presenter photo (person · 1)')}</span></label>
+                <div className="uploads">
+                  {presenterImg ? (
+                    <div style={{ position: 'relative' }}>
+                      <img className="up-thumb" src={presenterImg.preview} alt="" />
+                      <button type="button" onClick={() => { setPresenterImg(null); setConsentPhoto(false); }} style={{ position: 'absolute', top: -6, right: -6, background: '#1A1A17', color: '#fff', border: 'none', borderRadius: '50%', width: 22, height: 22, cursor: 'pointer' }}>×</button>
+                    </div>
+                  ) : (
+                    <label className="up-add">{uploading ? '…' : '+'}<input type="file" accept="image/*" hidden onChange={onPickPresenter} /></label>
+                  )}
+                </div>
+                {presenterImg && (
+                  <label className="consent" style={{ marginTop: 8 }}>
+                    <input type="checkbox" checked={consentPhoto} onChange={(e) => setConsentPhoto(e.target.checked)} />
+                    <span className="ct">{T('ฉันมีสิทธิ์ใช้รูปพรีเซนเตอร์นี้ และรับผิดชอบเรื่องลิขสิทธิ์เอง (ไม่ใช้รูปดารา/คนอื่นที่ไม่ได้ขออนุญาต)', 'I have rights to this presenter photo and accept copyright responsibility')}</span>
+                  </label>
+                )}
+              </>
+            )}
           </>
         )}
 
-        {/* อัพรูปสินค้า / พรีเซนเตอร์ (ติดใต้ปุ่มพรีเซนเตอร์เลย) */}
-        <label className="field" style={{ marginTop: 10 }}><span>{fInfo.presenter && presenterMode === 'upload' ? T('อัพรูปพรีเซนเตอร์ / สินค้า (กดช่อง + ด้านล่าง)', 'Upload presenter / product photo (tap + below)') : T('อัพรูปสินค้า (กดช่อง + ด้านล่าง)', 'Upload product photos (tap + below)')}</span></label>
-        <div className="uploads">
-          {images.map((im, i) => (
-            <div key={i} style={{ position: 'relative' }}>
-              <img className="up-thumb" src={im.preview} alt="" />
-              <button type="button" onClick={() => setImages(images.filter((_, j) => j !== i))} style={{ position: 'absolute', top: -6, right: -6, background: '#1A1A17', color: '#fff', border: 'none', borderRadius: '50%', width: 22, height: 22, cursor: 'pointer' }}>×</button>
+        {/* สินค้า — โผล่เมื่อเลือก */}
+        {hasProduct && (
+          <>
+            <label className="field" style={{ marginTop: 10 }}><span>{T('รูปสินค้า (กดช่อง + ด้านล่าง · ใส่กี่รูปก็ได้)', 'Product photos (tap + · any number)')}</span></label>
+            <div className="uploads">
+              {images.map((im, i) => (
+                <div key={i} style={{ position: 'relative' }}>
+                  <img className="up-thumb" src={im.preview} alt="" />
+                  <button type="button" onClick={() => setImages(images.filter((_, j) => j !== i))} style={{ position: 'absolute', top: -6, right: -6, background: '#1A1A17', color: '#fff', border: 'none', borderRadius: '50%', width: 22, height: 22, cursor: 'pointer' }}>×</button>
+                </div>
+              ))}
+              <label className="up-add">{uploading ? '…' : '+'}<input type="file" accept="image/*" multiple hidden onChange={onPick} /></label>
             </div>
-          ))}
-          <label className="up-add">{uploading ? '…' : '+'}<input type="file" accept="image/*" multiple hidden onChange={onPick} /></label>
-        </div>
-        {/* ยินยอมลิขสิทธิ์รูป — โผล่ใต้รูปเฉพาะตอนอัพรูปพรีเซนเตอร์แล้วเท่านั้น */}
-        {fInfo.presenter && presenterMode === 'upload' && images.length > 0 && (
-          <label className="consent" style={{ marginTop: 8 }}>
-            <input type="checkbox" checked={consentPhoto} onChange={(e) => setConsentPhoto(e.target.checked)} />
-            <span className="ct">{T('ฉันมีสิทธิ์ใช้รูปพรีเซนเตอร์นี้ และรับผิดชอบเรื่องลิขสิทธิ์เอง (ไม่ใช้รูปดารา/คนอื่นที่ไม่ได้ขออนุญาต)', 'I have rights to this presenter photo and accept copyright responsibility')}</span>
-          </label>
+          </>
+        )}
+
+        {/* สถานที่ / บรรยากาศ — โผล่เมื่อเลือก */}
+        {hasPlace && (
+          <>
+            <label className="field" style={{ marginTop: 10 }}><span>{T('รูปสถานที่ (ถ้ามี · 1 รูป)', 'Place photo (optional · 1)')}</span></label>
+            <div className="uploads">
+              {placeImg ? (
+                <div style={{ position: 'relative' }}>
+                  <img className="up-thumb" src={placeImg.preview} alt="" />
+                  <button type="button" onClick={() => setPlaceImg(null)} style={{ position: 'absolute', top: -6, right: -6, background: '#1A1A17', color: '#fff', border: 'none', borderRadius: '50%', width: 22, height: 22, cursor: 'pointer' }}>×</button>
+                </div>
+              ) : (
+                <label className="up-add">{uploading ? '…' : '+'}<input type="file" accept="image/*" hidden onChange={onPickPlace} /></label>
+              )}
+            </div>
+            <label className="field" style={{ marginTop: 10 }}><span>{T('บรรยายสถานที่ / บรรยากาศ', 'Describe the place / scene')}</span>
+              <input type="text" value={placeDesc} onChange={(e) => setPlaceDesc(e.target.value)} placeholder={T('เช่น รีสอร์ทริมทะเล โทนอบอุ่น · คาเฟ่โทนไม้', 'e.g. beachfront resort, warm tone')} />
+            </label>
+          </>
         )}
 
         {/* platform / ratio */}
@@ -363,7 +438,7 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
                 <select value={spokenLang} onChange={(e) => setSpokenLang(e.target.value)}>
                   {['ไทย', 'อังกฤษ', 'ไทย + ซับอังกฤษ', 'จีน'].map((x) => <option key={x}>{x}</option>)}
                 </select></label>
-              {fInfo.presenter && (
+              {hasPresenter && (
                 <label className="field"><span>{T('เพศพรีเซนเตอร์', 'Presenter gender')}</span>
                   <select value={presenterGender} onChange={(e) => setPresenterGender(e.target.value)}>
                     {['อัตโนมัติ (ตามรูป)', 'หญิง', 'ชาย'].map((x) => <option key={x}>{x}</option>)}
@@ -380,16 +455,16 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
         {/* concept + brief (video) */}
         {!isImage && (
           <>
-            <div className="mini-label">{T('คอนเซ็ปต์', 'Concept')}</div>
-            <div className="chips">{CONCEPTS.map((c) => <button type="button" key={c.id} className={'chip' + (concept === c.id ? ' active' : '')} onClick={() => setConcept(c.id)}>{c.th}</button>)}</div>
+            <label className="field"><span>{T('คอนเซ็ปต์', 'Concept')}</span>
+              <select value={concept} onChange={(e) => setConcept(e.target.value)}>
+                {CONCEPTS.map((c) => <option key={c.id} value={c.id}>{c.th}</option>)}
+              </select>
+            </label>
             {concept === 'other' && <input type="text" value={conceptText} onChange={(e) => setConceptText(e.target.value)} placeholder="พิมพ์คอนเซ็ปต์เอง" style={{ marginTop: 8 }} />}
 
             <label className="field"><span>{T('ชื่อสินค้า', 'Product name')}</span><input type="text" name="bfName" placeholder="เช่น เซรั่มหน้าใส Glow" /></label>
-            <div className="grid grid-2">
-              <label className="field"><span>{T('ราคา', 'Price')}</span><input type="text" name="bfPrice" placeholder="เช่น 199 บาท" /></label>
-              <label className="field"><span>{T('โปรถึงวันไหน', 'Promo ends')}</span><input type="text" name="bfPromo" placeholder="เช่น ถึง 30 มิ.ย." /></label>
-            </div>
-            <label className="field"><span>{T('จุดขาย / อยากบอกอะไร', 'Key selling point')}</span><textarea name="bfPoint" rows={2} placeholder="เช่น ใช้ 2 สัปดาห์หน้าใสขึ้น" /></label>
+            <label className="field"><span>{T('ราคา', 'Price')}</span><input type="text" name="bfPrice" placeholder="เช่น 199 บาท" /></label>
+            <label className="field"><span>{T('จุดขาย / อยากบอกอะไร (มีโปรถึงวันไหนใส่ตรงนี้ได้)', 'Key selling point (add promo dates here)')}</span><textarea name="bfPoint" rows={2} placeholder="เช่น ใช้ 2 สัปดาห์หน้าใสขึ้น · ลดถึง 30 มิ.ย." /></label>
 
             <div className="mini-label">{T('ภาษาของบทพูด', 'Script language')}</div>
             <div className="seg">
