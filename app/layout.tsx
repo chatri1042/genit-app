@@ -1,6 +1,9 @@
 import type { Metadata } from 'next';
 import './globals.css';
 
+// บังคับให้ฟังก์ชันรันที่โตเกียว (ตรงกับ Supabase ap-northeast-1) — ตั้งในโค้ดชัวร์กว่าตั้งในหน้า Vercel
+export const preferredRegion = 'hnd1';
+
 export const metadata: Metadata = {
   title: 'GenIt — สร้างวิดีโอโปรโมทสินค้า AI',
   description: 'ให้ร้าน SME สร้างวิดีโอโปรโมทสินค้าแบบง่าย ด้วย AI',
