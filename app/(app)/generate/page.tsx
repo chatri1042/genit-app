@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import GenerateForm from '@/components/GenerateForm';
+import PageChar from '@/components/PageChar';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,6 +14,7 @@ export default async function GeneratePage() {
       <h1>บรีฟงานใหม่</h1>
       <p className="muted">เลือกรูปแบบ อัพรูปสินค้า แล้วกรอกบรีฟ — ระบบจะบันทึกเป็นงานจริงในบัญชีคุณ</p>
       <GenerateForm brands={brands ?? []} />
+      <PageChar name="skate" side="left" width={340} />
     </>
   );
 }

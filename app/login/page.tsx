@@ -34,46 +34,48 @@ export default function LoginPage() {
 
   return (
     <main className="auth">
-      <div className="auth-left">
-        <div className="logo">Gen<b>It</b></div>
-        <div className="auth-lead">ร้านเล็ก ๆ<br />ก็มีคลิปโฆษณา<br /><em>สวย ๆ</em> ได้</div>
-        <div className="auth-trial">
-          <div className="ic">🎁</div>
-          <div>
-            <div className="tt">ทดลองฟรี 1 สิทธิ์ต่อบัญชี</div>
-            <div className="td">สมัครแล้วรับเครดิตทดลองทันที ลองสร้างงานจริงได้เลย ไม่ต้องผูกบัตร (วิดีโอทดลองสูงสุด 10 วิ · มีลายน้ำ)</div>
+      <div className="auth-top">
+        <div className="auth-left">
+          <div className="logo">Gen<b>It</b></div>
+          <div className="auth-lead">ร้านเล็ก ๆ<br />ก็มีคลิปโฆษณา<br /><em>สวย ๆ</em> ได้</div>
+          <div className="auth-trial">
+            <div className="ic">🎁</div>
+            <div>
+              <div className="tt">ทดลองฟรี 1 สิทธิ์ต่อบัญชี</div>
+              <div className="td">สมัครแล้วรับเครดิตทดลองทันที ลองสร้างงานจริงได้เลย ไม่ต้องผูกบัตร (วิดีโอทดลองสูงสุด 10 วิ · มีลายน้ำ)</div>
+            </div>
           </div>
         </div>
-        <div className="auth-hero"><img src="/characters/hero.png" alt="ร้านค้า SME" /></div>
+
+        <div className="auth-right">
+          <div className="inner">
+            <h1>{mode === 'login' ? 'เข้าสู่ระบบ' : 'สมัครใช้งาน'}</h1>
+            <p className="sub">{mode === 'login' ? 'เข้าสู่ระบบเพื่อสร้างวิดีโอ' : 'สมัครแล้วรับเครดิตทดลองฟรีทันที'}</p>
+            <form onSubmit={submit}>
+              <label className="field"><span>อีเมล</span>
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
+              </label>
+              <label className="field"><span>รหัสผ่าน</span>
+                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} />
+              </label>
+              <button className="btn btn-lg" style={{ width: '100%', justifyContent: 'center', marginTop: 20 }} disabled={loading}>
+                {loading ? 'กำลังทำงาน…' : mode === 'login' ? 'เข้าสู่ระบบ' : 'สมัคร'}
+              </button>
+            </form>
+            {err && <p className="err">{err}</p>}
+            {msg && <p className="ok">{msg}</p>}
+            <p className="muted" style={{ marginTop: 20, fontSize: 14 }}>
+              {mode === 'login' ? 'ยังไม่มีบัญชี? ' : 'มีบัญชีแล้ว? '}
+              <a style={{ color: 'var(--yellow-deep)', cursor: 'pointer', fontWeight: 600 }}
+                onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setErr(''); setMsg(''); }}>
+                {mode === 'login' ? 'สมัครที่นี่' : 'เข้าสู่ระบบ'}
+              </a>
+            </p>
+          </div>
+        </div>
       </div>
 
-      <div className="auth-right">
-        <div className="logo" style={{ fontWeight: 800, fontSize: 32, letterSpacing: '-1.2px' }}>
-          Gen<b style={{ color: 'var(--yellow-deep)' }}>It</b>
-        </div>
-        <h1 style={{ marginTop: 14 }}>{mode === 'login' ? 'เข้าสู่ระบบ' : 'สมัครใช้งาน'}</h1>
-        <p className="sub">{mode === 'login' ? 'เข้าสู่ระบบเพื่อสร้างวิดีโอ' : 'สมัครแล้วรับเครดิตทดลองฟรีทันที'}</p>
-        <form onSubmit={submit}>
-          <label className="field"><span>อีเมล</span>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
-          </label>
-          <label className="field"><span>รหัสผ่าน</span>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} />
-          </label>
-          <button className="btn btn-lg" style={{ width: '100%', justifyContent: 'center', marginTop: 20 }} disabled={loading}>
-            {loading ? 'กำลังทำงาน…' : mode === 'login' ? 'เข้าสู่ระบบ' : 'สมัคร'}
-          </button>
-        </form>
-        {err && <p className="err">{err}</p>}
-        {msg && <p className="ok">{msg}</p>}
-        <p className="muted" style={{ marginTop: 20, fontSize: 14 }}>
-          {mode === 'login' ? 'ยังไม่มีบัญชี? ' : 'มีบัญชีแล้ว? '}
-          <a style={{ color: 'var(--yellow-deep)', cursor: 'pointer', fontWeight: 600 }}
-            onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setErr(''); setMsg(''); }}>
-            {mode === 'login' ? 'สมัครที่นี่' : 'เข้าสู่ระบบ'}
-          </a>
-        </p>
-      </div>
+      <div className="auth-band"><img src="/characters/hero.png" alt="ร้านค้า SME" /></div>
     </main>
   );
 }

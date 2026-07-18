@@ -493,7 +493,7 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
         {!isImage && (
           <div style={{ marginTop: 18, borderTop: '1px solid var(--line)', paddingTop: 14 }}>
             <div className="row" style={{ justifyContent: 'space-between' }}>
-              <div className="mini-label" style={{ margin: 0 }}>{T('ลำดับช็อต (ไม่บังคับ)', 'Shot list (optional)')}</div>
+              <div style={{ margin: 0, fontSize: 19, fontWeight: 700 }}>🎬 {T('ลำดับช็อต (สตอรีบอร์ด)', 'Shot list (storyboard)')} <span className="muted" style={{ fontSize: 13, fontWeight: 400 }}>{T('· ไม่บังคับ', '· optional')}</span></div>
               <button type="button" className="btn-ghost" style={{ padding: '6px 12px', borderRadius: 8, cursor: 'pointer', font: 'inherit', fontSize: 13 }} onClick={planShots}>{shots.length ? T('วางลำดับใหม่', 'Re-plan') : T('✦ วางลำดับช็อตให้', '✦ Plan shots')}</button>
             </div>
             {shots.map((s, i) => (
@@ -546,13 +546,6 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
         </div>
       </div>
 
-      {/* sticky generate bar */}
-      <div className="sticky-gen">
-        <div className="sg-in">
-          <div className="muted" style={{ fontSize: 14 }}>{T('ใช้', 'Uses')} <b style={{ color: 'var(--ink)', fontSize: 17 }}>{credits}</b> {T('เครดิต', 'credits')}</div>
-          <button className="btn btn-lg" disabled={uploading}>✦ {isImage ? T('สร้างรูป', 'Generate images') : T('สร้างวิดีโอ', 'Generate video')}</button>
-        </div>
-      </div>
     </form>
   );
 }

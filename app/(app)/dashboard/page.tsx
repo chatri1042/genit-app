@@ -60,7 +60,7 @@ export default async function Dashboard() {
       ) : (
         <div className="empty" style={{ marginTop: 12 }}>ยังไม่มีงาน — กด “สร้างวิดีโอใหม่” เพื่อเริ่ม</div>
       )}
-      <PageChar name="chef" side="left" width={200} />
+      <PageChar name="chef" side="left" width={300} />
     </>
   );
 }
