@@ -59,7 +59,7 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
   const [hasPresenter, setHasPresenter] = useState(true);
   const [hasProduct, setHasProduct] = useState(true);
   const [hasPlace, setHasPlace] = useState(false);
-  const [placeImg, setPlaceImg] = useState<{ path: string; preview: string } | null>(null);
+  const [placeImgs, setPlaceImgs] = useState<{ path: string; preview: string }[]>([]);
   const [placeDesc, setPlaceDesc] = useState('');
   const [ratio, setRatio] = useState('9:16');
   const [duration, setDuration] = useState(20);
@@ -143,7 +143,7 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
 
   const firstPreview = (hasPresenter && presenterMode === 'upload' && presenterImg?.preview)
     || images[0]?.preview
-    || placeImg?.preview
+    || placeImgs[0]?.preview
     || (useBrandImgs && pickedAssets.length ? brandAssets.find((a) => a.path === pickedAssets[0])?.url : '') || '';
 
   function pickPlatform(id: string) {
@@ -174,10 +174,10 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
     if (out[0]) setPresenterImg(out[0]);
   }
   async function onPickPlace(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]; if (!file) return;
+    const files = Array.from(e.target.files ?? []); if (!files.length) return;
     setUploading(true); setErr('');
-    const out = await upload([file], 'place-'); setUploading(false); e.target.value = '';
-    if (out[0]) setPlaceImg(out[0]);
+    const out = await upload(files, 'place-'); setUploading(false); e.target.value = '';
+    setPlaceImgs((p) => [...p, ...out]);
   }
   function applyPreset(p: typeof PRESETS[number]) {
     setOutput('video');
@@ -188,7 +188,7 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
   async function onVoiceFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]; if (!file) return;
     setUploading(true); const out = await upload([file], 'voice-'); setUploading(false);
-    if (out[0]) { setVoicePath(out[0].path); setVoiceLabel('อัพโหลด: ' + file.name); } e.target.value = '';
+    if (out[0]) { setVoicePath(out[0].path); setVoiceLabel(T('อัพโหลด: ', 'Uploaded: ') + file.name); } e.target.value = '';
   }
   // record
   const [recOn, setRecOn] = useState(false); const [recSec, setRecSec] = useState(0);
@@ -205,7 +205,7 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
         const { data: { user } } = await supabase.auth.getUser(); if (!user) return;
         const path = `${user.id}/voice-${crypto.randomUUID()}.webm`; setUploading(true);
         const { error } = await supabase.storage.from('uploads').upload(path, blob); setUploading(false);
-        if (!error) { setVoicePath(path); setVoiceLabel(`อัดเสียงแล้ว ${recSec} วิ`); }
+        if (!error) { setVoicePath(path); setVoiceLabel(T(`อัดเสียงแล้ว ${recSec} วิ`, `Recorded ${recSec}s`)); }
       };
       recRef.current = mr; mr.start(); setRecOn(true); setRecSec(0);
       timerRef.current = setInterval(() => setRecSec((s) => s + 1), 1000);
@@ -248,7 +248,7 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
     voice_detail: voiceMode === 'ai' ? { gender: vGender, age: vAge, tone: vTone, voice: vPick, signature: vSignature } : {},
     subjects: { presenter: hasPresenter, product: hasProduct, place: hasPlace },
     presenter: hasPresenter ? { mode: presenterMode, consent: consentPhoto, photo: presenterMode === 'upload' ? (presenterImg?.path ?? null) : null, avatar: presenterMode === 'ai' ? { gender: avGender, age: avAge, ethnicity: avEth } : null } : null,
-    place: hasPlace ? { photo: placeImg?.path ?? null, desc: placeDesc } : null,
+    place: hasPlace ? { photos: placeImgs.map((i) => i.path), desc: placeDesc } : null,
     spoken_lang: spokenLang, presenter_gender: presenterGender, ui_lang: lang,
   });
 
@@ -399,16 +399,15 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
         {/* สถานที่ / บรรยากาศ — โผล่เมื่อเลือก */}
         {hasPlace && (
           <>
-            <label className="field" style={{ marginTop: 10 }}><span>{T('รูปสถานที่ (ถ้ามี · 1 รูป)', 'Place photo (optional · 1)')}</span></label>
+            <label className="field" style={{ marginTop: 10 }}><span>{T('รูปสถานที่ (ใส่กี่รูปก็ได้ · เช่น ห้องอาหาร ห้องนอน ล็อบบี้)', 'Place photos (any number · e.g. dining, bedroom, lobby)')}</span></label>
             <div className="uploads">
-              {placeImg ? (
-                <div style={{ position: 'relative' }}>
-                  <img className="up-thumb" src={placeImg.preview} alt="" />
-                  <button type="button" onClick={() => setPlaceImg(null)} style={{ position: 'absolute', top: -6, right: -6, background: '#1A1A17', color: '#fff', border: 'none', borderRadius: '50%', width: 22, height: 22, cursor: 'pointer' }}>×</button>
+              {placeImgs.map((im, i) => (
+                <div key={i} style={{ position: 'relative' }}>
+                  <img className="up-thumb" src={im.preview} alt="" />
+                  <button type="button" onClick={() => setPlaceImgs(placeImgs.filter((_, j) => j !== i))} style={{ position: 'absolute', top: -6, right: -6, background: '#1A1A17', color: '#fff', border: 'none', borderRadius: '50%', width: 22, height: 22, cursor: 'pointer' }}>×</button>
                 </div>
-              ) : (
-                <label className="up-add">{uploading ? '…' : '+'}<input type="file" accept="image/*" hidden onChange={onPickPlace} /></label>
-              )}
+              ))}
+              <label className="up-add">{uploading ? '…' : '+'}<input type="file" accept="image/*" multiple hidden onChange={onPickPlace} /></label>
             </div>
             <label className="field" style={{ marginTop: 10 }}><span>{T('บรรยายสถานที่ / บรรยากาศ', 'Describe the place / scene')}</span>
               <input type="text" value={placeDesc} onChange={(e) => setPlaceDesc(e.target.value)} placeholder={T('เช่น รีสอร์ทริมทะเล โทนอบอุ่น · คาเฟ่โทนไม้', 'e.g. beachfront resort, warm tone')} />
@@ -432,7 +431,7 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
             <label className="field"><span>{T('ข้อความหลัก (พาดหัวใหญ่)', 'Main text (headline)')}</span>
               <input type="text" name="bfName" value={imgMain} onChange={(e) => setImgMain(e.target.value)} placeholder="เช่น ลด 50% วันนี้เท่านั้น" /></label>
             <label className="field"><span>{T('ข้อความรอง (บรรทัดเล็ก)', 'Secondary text')}</span>
-              <input type="text" value={imgSub} onChange={(e) => setImgSub(e.target.value)} placeholder="เช่น ทักแชทสั่งเลย ส่งฟรีทั่วไทย" /></label>
+              <input type="text" value={imgSub} onChange={(e) => setImgSub(e.target.value)} placeholder={T('เช่น ทักแชทสั่งเลย ส่งฟรีทั่วไทย', 'e.g. Chat to order · free shipping')} /></label>
             <label className="field"><span>{T('จำนวนรูป', 'Number of images')}</span></label>
             <Stepper value={count} setValue={setCount} min={1} max={10} />
           </>
@@ -497,7 +496,7 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
                   <div key={i} className="card" style={{ padding: 14, cursor: 'pointer', borderColor: script === d.text ? 'var(--ink)' : 'var(--line)' }} onClick={() => setScript(d.text)}>
                     <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--yellow-deep)' }}>{d.hook}</div>
                     <div style={{ fontSize: 13.5, marginTop: 4, whiteSpace: 'pre-wrap' }}>{d.text}</div>
-                    <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>{script === d.text ? '✓ เลือกบทนี้แล้ว' : 'แตะเพื่อเลือกบทนี้'}</div>
+                    <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>{script === d.text ? T('✓ เลือกบทนี้แล้ว', '✓ Selected') : T('แตะเพื่อเลือกบทนี้', 'Tap to pick this')}</div>
                   </div>
                 ))}
               </div>
@@ -517,7 +516,7 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
               ))}
             </div>
             {voiceMode === 'record' && (
-              <div><button type="button" className={'rec-btn' + (recOn ? ' on' : '')} onClick={toggleRec}><span className="rec-dot" />{recOn ? `กำลังอัด… ${recSec} วิ (แตะหยุด)` : 'แตะเพื่อเริ่มอัด'}</button>{voiceLabel && <p className="ok">{voiceLabel}</p>}</div>
+              <div><button type="button" className={'rec-btn' + (recOn ? ' on' : '')} onClick={toggleRec}><span className="rec-dot" />{recOn ? T(`กำลังอัด… ${recSec} วิ (แตะหยุด)`, `Recording… ${recSec}s (tap to stop)`) : T('แตะเพื่อเริ่มอัด', 'Tap to start recording')}</button>{voiceLabel && <p className="ok">{voiceLabel}</p>}</div>
             )}
             {voiceMode === 'upload' && (
               <div><label className="btn-ghost" style={{ display: 'inline-block', padding: '10px 18px', borderRadius: 10, cursor: 'pointer', marginTop: 8 }}>{T('เลือกไฟล์เสียง', 'Choose audio')} (mp3/wav)<input type="file" accept="audio/*" hidden onChange={onVoiceFile} /></label>{voiceLabel && <p className="ok">{voiceLabel}</p>}</div>
@@ -591,16 +590,16 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
                 <div className="shot-thumb" style={{ width: TW, height: TH * 0.28 }} />
                 <div className="shot-body">
                   <input type="text" value={s.name} onChange={(e) => { const n = [...shots]; n[i].name = e.target.value; setShots(n); }} />
-                  <input type="text" value={s.desc} placeholder="อยากให้ช็อตนี้เป็นอะไร" style={{ marginTop: 4 }} onChange={(e) => { const n = [...shots]; n[i].desc = e.target.value; setShots(n); }} />
+                  <input type="text" value={s.desc} placeholder={T('อยากให้ช็อตนี้เป็นอะไร', 'What should this shot show?')} style={{ marginTop: 4 }} onChange={(e) => { const n = [...shots]; n[i].desc = e.target.value; setShots(n); }} />
                   <div className="shot-acts">
                     <button type="button" onClick={() => moveShot(i, -1)} disabled={i === 0}>↑</button>
                     <button type="button" onClick={() => moveShot(i, 1)} disabled={i === shots.length - 1}>↓</button>
-                    <button type="button" disabled={shots.length <= 2} onClick={() => setShots(shots.filter((_, j) => j !== i))}>ลบ</button>
+                    <button type="button" disabled={shots.length <= 2} onClick={() => setShots(shots.filter((_, j) => j !== i))}>{T('ลบ', 'Delete')}</button>
                   </div>
                 </div>
               </div>
             ))}
-            {shots.length > 0 && <button type="button" className="btn-ghost" style={{ padding: '6px 14px', borderRadius: 8, cursor: 'pointer', font: 'inherit', fontSize: 13, marginTop: 8 }} onClick={() => setShots([...shots, { name: 'ช็อตใหม่', desc: '' }])}>+ {T('เพิ่มช็อต', 'Add shot')}</button>}
+            {shots.length > 0 && <button type="button" className="btn-ghost" style={{ padding: '6px 14px', borderRadius: 8, cursor: 'pointer', font: 'inherit', fontSize: 13, marginTop: 8 }} onClick={() => setShots([...shots, { name: T('ช็อตใหม่', 'New shot'), desc: '' }])}>+ {T('เพิ่มช็อต', 'Add shot')}</button>}
           </div>
         )}
 
@@ -628,8 +627,8 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
           <div className="pv-frame" style={{ width: pInfo.w, maxWidth: '100%', aspectRatio: ratio.replace(':', ' / ') }}>
             {firstPreview ? <img src={firstPreview} alt="" /> : <div className="pv-empty">📹<br />{isImage ? T('รูปจะขึ้นตรงนี้', 'Image here') : T('วิดีโอจะขึ้นตรงนี้', 'Video here')}</div>}
             {logo && <div style={{ position: 'absolute', top: 8, right: 8, background: 'var(--yellow)', color: '#000', borderRadius: 6, padding: '2px 7px', fontSize: 11, fontWeight: 700 }}>LOGO</div>}
-            {cta && !isImage && <div style={{ position: 'absolute', bottom: 34, left: '50%', transform: 'translateX(-50%)', background: 'var(--yellow)', color: '#000', borderRadius: 999, padding: '4px 12px', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>ทักแชทสั่งเลย →</div>}
-            {(subtitles || isImage) && (imgMain || !isImage) && <div style={{ position: 'absolute', bottom: 8, left: 8, right: 8, textAlign: 'center', color: '#fff', fontSize: 12, textShadow: '0 1px 3px #000' }}>{isImage ? (imgMain || 'ข้อความบนรูป') : 'ซับไตเติลตัวอย่าง'}</div>}
+            {cta && !isImage && <div style={{ position: 'absolute', bottom: 34, left: '50%', transform: 'translateX(-50%)', background: 'var(--yellow)', color: '#000', borderRadius: 999, padding: '4px 12px', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>{T('ทักแชทสั่งเลย →', 'Chat to order →')}</div>}
+            {(subtitles || isImage) && (imgMain || !isImage) && <div style={{ position: 'absolute', bottom: 8, left: 8, right: 8, textAlign: 'center', color: '#fff', fontSize: 12, textShadow: '0 1px 3px #000' }}>{isImage ? (imgMain || T('ข้อความบนรูป', 'Text on image')) : T('ซับไตเติลตัวอย่าง', 'Sample subtitle')}</div>}
           </div>
           <div className="pv-cap">{isImage ? `${count} ${T('รูป', 'images')}` : `${duration} ${T('วิ', 's')} · ${count} ${T('คลิป', 'clips')}`} · ~{credits} {T('เครดิต', 'cr')}</div>
         </div>

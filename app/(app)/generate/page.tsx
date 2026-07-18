@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import GenerateForm from '@/components/GenerateForm';
 import PageChar from '@/components/PageChar';
+import TL from '@/components/TL';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,9 +11,9 @@ export default async function GeneratePage() {
 
   return (
     <>
-      <div className="eyebrow">สร้างวิดีโอ</div>
-      <h1>บรีฟงานใหม่</h1>
-      <p className="muted">เลือกรูปแบบ อัพรูปสินค้า แล้วกรอกบรีฟ — ระบบจะบันทึกเป็นงานจริงในบัญชีคุณ</p>
+      <div className="eyebrow"><TL th="สร้างวิดีโอ" en="Create video" /></div>
+      <h1><TL th="บรีฟงานใหม่" en="New brief" /></h1>
+      <p className="muted"><TL th="เลือกสิ่งที่อยากได้ อัพรูป แล้วกรอกบรีฟ — ระบบจะบันทึกเป็นงานจริงในบัญชีคุณ" en="Pick what you want, upload photos, fill the brief — it's saved as a real job in your account." /></p>
       <GenerateForm brands={brands ?? []} />
       <PageChar name="skate" side="left" width={260} />
     </>

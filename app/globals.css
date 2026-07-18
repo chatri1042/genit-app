@@ -53,7 +53,7 @@ textarea { resize: vertical; }
 .nav { position: sticky; top: 0; z-index: 30; background: rgba(244,242,236,.9); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
 .nav-in { max-width: 1120px; margin: 0 auto; padding: 13px 24px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .nav .logo { font-weight: 800; font-size: 42px; letter-spacing: -1.4px; margin-right: 20px; }
-.nav .logo b { color: var(--ink); }
+.nav .logo b { color: var(--yellow-deep); }
 .nav a.link { font-weight: 600; color: var(--muted); padding: 8px 15px; border-radius: 11px; font-size: 15px; }
 .nav a.link:hover { color: var(--ink); }
 .nav a.link.active { color: var(--ink); background: var(--yellow); }

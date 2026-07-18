@@ -2,11 +2,13 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import JobRunner from '@/components/JobRunner';
+import TL from '@/components/TL';
 
 export const dynamic = 'force-dynamic';
 
-const FORMAT_TH: Record<string, string> = {
-  ugc: 'พรีเซนเตอร์พูด', hand: 'มือถือสินค้า', food: 'อาหาร/ขนม', product: 'โชว์สินค้า', image: 'สร้างรูป',
+const FORMAT_TH: Record<string, { th: string; en: string }> = {
+  video: { th: 'วิดีโอ', en: 'Video' }, image: { th: 'รูปภาพ', en: 'Images' },
+  ugc: { th: 'พรีเซนเตอร์พูด', en: 'Talking presenter' }, hand: { th: 'มือถือสินค้า', en: 'Hands only' }, food: { th: 'อาหาร/ขนม', en: 'Food' }, product: { th: 'โชว์สินค้า', en: 'Product' },
 };
 
 export default async function JobPage({ params }: { params: { id: string } }) {
@@ -20,11 +22,11 @@ export default async function JobPage({ params }: { params: { id: string } }) {
 
   return (
     <>
-      <Link href="/history" className="muted" style={{ fontSize: 14 }}>← ประวัติงาน</Link>
-      <h1 style={{ marginTop: 8 }}>{FORMAT_TH[job.format] ?? job.format}</h1>
+      <Link href="/history" className="muted" style={{ fontSize: 14 }}>← <TL th="ประวัติงาน" en="History" /></Link>
+      <h1 style={{ marginTop: 8 }}>{FORMAT_TH[job.format] ? <TL th={FORMAT_TH[job.format].th} en={FORMAT_TH[job.format].en} /> : job.format}</h1>
       <div className="muted" style={{ fontSize: 14, marginTop: 4 }}>
-        {job.ratio}{job.duration_sec ? ` · ${job.duration_sec} วิ` : ''} · {job.count} ชิ้น
-        {job.brief?.name ? ` · ${job.brief.name}` : ''} · ~{job.credits_cost} เครดิต
+        {job.ratio}{job.duration_sec ? ` · ${job.duration_sec}${''}` : ''}{job.duration_sec ? <TL th=" วิ" en="s" /> : ''} · {job.count} <TL th="ชิ้น" en="pcs" />
+        {job.brief?.name ? ` · ${job.brief.name}` : ''} · ~{job.credits_cost} <TL th="เครดิต" en="cr" />
       </div>
 
       <JobRunner jobId={job.id} initialStatus={job.status} isImage={job.type === 'image'} />
