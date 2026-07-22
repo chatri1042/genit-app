@@ -495,13 +495,6 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
         {/* concept + brief (video) */}
         {!isImage && (
           <>
-            <label className="field"><span>{T('คอนเซ็ปต์', 'Concept')}</span>
-              <select value={concept} onChange={(e) => setConcept(e.target.value)}>
-                {CONCEPTS.map((c) => <option key={c.id} value={c.id}>{T(c.th, c.en)}</option>)}
-              </select>
-            </label>
-            {concept === 'other' && <input type="text" value={conceptText} onChange={(e) => setConceptText(e.target.value)} placeholder={T('พิมพ์คอนเซ็ปต์เอง', 'Type your own concept')} style={{ marginTop: 8 }} />}
-
             <label className="field"><span>{T('เล่าให้เราฟังหน่อย — ขายอะไร ราคา จุดเด่น มีโปรถึงวันไหน (พิมพ์รวมกันได้เลย)', 'Tell us about it — what you sell, price, highlights, promo dates (all in one)')}</span>
               <textarea name="bfPoint" rows={4} placeholder={T('เช่น เซรั่มหน้าใส Glow ขวดละ 590 บาท ใช้ 2 สัปดาห์หน้าใสขึ้น ลด 20% ถึงสิ้นเดือน', 'e.g. Glow serum, 590 THB, brighter skin in 2 weeks, 20% off till month-end')} /></label>
 
