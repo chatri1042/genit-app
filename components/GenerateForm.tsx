@@ -336,10 +336,13 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
 
         {/* ผลลัพธ์: วิดีโอ / รูปภาพ */}
         <span className="muted" style={{ fontSize: 14 }}>{T('อยากได้ผลลัพธ์แบบไหน', 'What do you want')}</span>
-        <div className="seg" style={{ marginTop: 8 }}>
-          {[['video', T('🎬 วิดีโอ', '🎬 Video')], ['image', T('🖼️ รูปภาพ', '🖼️ Images')]].map(([v, t]) => (
-            <button type="button" key={v} className={output === v ? 'active' : ''} onClick={() => { setOutput(v as 'video' | 'image'); setShots([]); }}>{t}</button>
-          ))}
+        <div className="pick2">
+          <button type="button" className={'pick' + (output === 'video' ? ' on' : '')} onClick={() => { setOutput('video'); setShots([]); }}>
+            <div className="pt">{T('วิดีโอ', 'Video')}</div><div className="ps">{T('คลิปพร้อมลงโซเชียล มีเสียงพากย์', 'Ready-to-post clip with voice-over')}</div>
+          </button>
+          <button type="button" className={'pick' + (output === 'image' ? ' on' : '')} onClick={() => { setOutput('image'); setShots([]); }}>
+            <div className="pt">{T('รูปภาพ', 'Images')}</div><div className="ps">{T('ภาพสินค้าสวยๆ ไว้โพส · ถูกกว่ามาก', 'Nice product images · much cheaper')}</div>
+          </button>
         </div>
 
         {/* เริ่มเร็ว (ไม่บังคับ) */}
@@ -352,10 +355,10 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
 
         {/* องค์ประกอบในคลิป — เลือกได้หลายอย่าง ไม่ต้องครบ */}
         <div className="mini-label">{output === 'image' ? T('ในภาพมีอะไรบ้าง (เลือกได้หลายอย่าง)', 'What\'s in the image (pick any)') : T('ในวิดีโอมีอะไรบ้าง (เลือกได้หลายอย่าง)', 'What\'s in the video (pick any)')}</div>
-        <div className="chips">
-          <button type="button" className={'chip' + (hasPresenter ? ' active' : '')} onClick={() => { setHasPresenter(!hasPresenter); setShots([]); }}>{hasPresenter ? '✓ ' : ''}{T('พรีเซนเตอร์ (คน)', 'Presenter')}</button>
-          <button type="button" className={'chip' + (hasProduct ? ' active' : '')} onClick={() => { setHasProduct(!hasProduct); setShots([]); }}>{hasProduct ? '✓ ' : ''}{T('สินค้า', 'Product')}</button>
-          <button type="button" className={'chip' + (hasPlace ? ' active' : '')} onClick={() => { setHasPlace(!hasPlace); setShots([]); }}>{hasPlace ? '✓ ' : ''}{T('สถานที่ / บรรยากาศ', 'Place / scene')}</button>
+        <div className="cards3">
+          <button type="button" className={'selcard' + (hasPresenter ? ' on' : '')} onClick={() => { setHasPresenter(!hasPresenter); setShots([]); }}><span className="chk">✓</span><div className="ct">{T('พรีเซนเตอร์', 'Presenter')}</div><div className="cs">{T('คนพูด / รีวิว', 'Person / review')}</div></button>
+          <button type="button" className={'selcard' + (hasProduct ? ' on' : '')} onClick={() => { setHasProduct(!hasProduct); setShots([]); }}><span className="chk">✓</span><div className="ct">{T('สินค้า', 'Product')}</div><div className="cs">{T('โชว์ของ / มือถือ', 'Show / hands')}</div></button>
+          <button type="button" className={'selcard' + (hasPlace ? ' on' : '')} onClick={() => { setHasPlace(!hasPlace); setShots([]); }}><span className="chk">✓</span><div className="ct">{T('สถานที่', 'Place')}</div><div className="cs">{T('ร้าน / บรรยากาศ', 'Store / scene')}</div></button>
         </div>
         {!hasPresenter && !hasProduct && !hasPlace && (
           <div className="muted" style={{ fontSize: 13, marginTop: 8 }}>{T('เลือกอย่างน้อย 1 อย่าง หรือปล่อยว่างให้ AI คิดจากบรีฟก็ได้', 'Pick at least one, or leave empty and let AI decide from the brief')}</div>
@@ -441,10 +444,11 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
 
         {/* platform / ratio */}
         <div className="mini-label">{T('ลงที่ไหน (ตั้งสัดส่วน+ความยาวให้)', 'Post where (sets size + length)')}</div>
-        <div className="chips">
+        <div className="cards3">
           {PLATFORMS.map((p) => (
-            <button type="button" key={p.id} className={'chip' + (ratio === p.id ? ' active' : '')} onClick={() => pickPlatform(p.id)}>
-              {T(p.th, p.en)} · {p.id}
+            <button type="button" key={p.id} className={'selcard' + (ratio === p.id ? ' on' : '')} onClick={() => pickPlatform(p.id)}>
+              <div className={'shape shape-' + p.id.replace(':', '')} />
+              <div className="ct">{T(p.th, p.en)}</div><div className="cs">{p.sub}</div>
             </button>
           ))}
         </div>
@@ -498,9 +502,8 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
             </label>
             {concept === 'other' && <input type="text" value={conceptText} onChange={(e) => setConceptText(e.target.value)} placeholder={T('พิมพ์คอนเซ็ปต์เอง', 'Type your own concept')} style={{ marginTop: 8 }} />}
 
-            <label className="field"><span>{T('ชื่อสินค้า', 'Product name')}</span><input type="text" name="bfName" placeholder={T('เช่น เซรั่มหน้าใส Glow', 'e.g. Glow brightening serum')} /></label>
-            <label className="field"><span>{T('ราคา', 'Price')}</span><input type="text" name="bfPrice" placeholder={T('เช่น 199 บาท', 'e.g. 199 THB')} /></label>
-            <label className="field"><span>{T('จุดขาย / อยากบอกอะไร (มีโปรถึงวันไหนใส่ตรงนี้ได้)', 'Key selling point (add promo dates here)')}</span><textarea name="bfPoint" rows={2} placeholder={T('เช่น ใช้ 2 สัปดาห์หน้าใสขึ้น · ลดถึง 30 มิ.ย.', 'e.g. brighter in 2 weeks · sale until Jun 30')} /></label>
+            <label className="field"><span>{T('เล่าให้เราฟังหน่อย — ขายอะไร ราคา จุดเด่น มีโปรถึงวันไหน (พิมพ์รวมกันได้เลย)', 'Tell us about it — what you sell, price, highlights, promo dates (all in one)')}</span>
+              <textarea name="bfPoint" rows={4} placeholder={T('เช่น เซรั่มหน้าใส Glow ขวดละ 590 บาท ใช้ 2 สัปดาห์หน้าใสขึ้น ลด 20% ถึงสิ้นเดือน', 'e.g. Glow serum, 590 THB, brighter skin in 2 weeks, 20% off till month-end')} /></label>
 
             <div className="mini-label">{T('ภาษาของบทพูด', 'Script language')}</div>
             <div className="seg">
