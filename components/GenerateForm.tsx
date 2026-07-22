@@ -113,6 +113,7 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
   const [uploading, setUploading] = useState(false);
   const [err, setErr] = useState('');
   const [shots, setShots] = useState<Shot[]>([]);
+  const [barShow, setBarShow] = useState(false);
 
   const isImage = output === 'image';
   const pInfo = PLATFORMS.find((p) => p.id === ratio)!;
@@ -129,6 +130,17 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
       setBrandAssets(paths.map((p, i) => ({ path: p, url: signed?.[i]?.signedUrl ?? '' })));
     })();
   }, [brandId, supabase]);
+
+  // แถบเครดิตด้านบน — โผล่เมื่อเลื่อนลงพ้นหัวข้อ + วางใต้ nav พอดี (วัดความสูง nav จริง)
+  useEffect(() => {
+    const nav = document.querySelector('.nav');
+    const setH = () => { if (nav) document.documentElement.style.setProperty('--nav-h', Math.round(nav.getBoundingClientRect().height) + 'px'); };
+    const onScroll = () => setBarShow(window.scrollY > 300);
+    setH(); onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', setH);
+    return () => { window.removeEventListener('scroll', onScroll); window.removeEventListener('resize', setH); };
+  }, []);
 
   const credits = useMemo(() => {
     if (isImage) return Math.max(1, count) * 3;
@@ -256,6 +268,18 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
 
   return (
     <form ref={formRef} action={createJobDraft} className="gen-wrap">
+      {/* แถบเครดิตเกาะบนสุด (โผล่ตอนเลื่อน) */}
+      <div className={'credit-top' + (barShow ? ' show' : '')}>
+        <div className="ct-in">
+          <div className="ct-l">
+            <span className="ct-lab">{T('งานนี้ใช้ประมาณ', 'This job uses about')}</span>
+            <span className="ct-cr">{credits} {T('เครดิต', 'cr')}</span>
+            <span className="ct-sub">· {isImage ? `${count} ${T('รูป', 'images')}` : `${duration} ${T('วิ', 's')} · ${count} ${T('คลิป', 'clips')}`}</span>
+          </div>
+          <button type="submit" className="ct-go" disabled={uploading}>{isImage ? T('สร้างรูป', 'Generate images') : T('สร้างวิดีโอ', 'Generate video')} →</button>
+        </div>
+      </div>
+
       <input type="hidden" name="format" value={output === 'image' ? 'image' : 'video'} />
       <input type="hidden" name="ratio" value={ratio} />
       <input type="hidden" name="concept" value={concept === 'other' ? conceptText : concept} />
