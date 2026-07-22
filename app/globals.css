@@ -154,7 +154,8 @@ textarea { resize: vertical; }
 
 /* pricing tiers */
 .tiers { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-top: 22px; }
-.tier { background: var(--surface); border: 1.5px solid var(--line); border-radius: var(--radius); padding: 24px; position: relative; }
+.tier { background: var(--surface); border: 1.5px solid var(--line); border-radius: var(--radius); padding: 24px; position: relative; display: flex; flex-direction: column; }
+.tier ul { flex: 1; }
 .tier.reco { border-color: var(--yellow-deep); box-shadow: 0 10px 34px rgba(224,178,46,.18); }
 .tier .tbadge { position: absolute; top: -13px; left: 22px; background: var(--ink); color: var(--yellow); font-size: 12px; font-weight: 700; padding: 5px 13px; border-radius: 999px; }
 .tier .tname { font-weight: 700; font-size: 17px; }
