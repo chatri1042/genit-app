@@ -29,6 +29,8 @@ export default function Storyboard({
   const [count, setCount] = useState(rec);
   const [imgs, setImgs] = useState<Record<string, ImgState>>({});
   const [lightbox, setLightbox] = useState<string | null>(null); // รูปที่กดดูใหญ่
+  const [avatarRef, setAvatarRef] = useState<string | null>(null); // path หน้าพรีเซนเตอร์ที่ล็อกไว้ (bucket outputs)
+  const avatarRefPromise = useRef<Promise<string | null> | null>(null); // กันเจนหน้าซ้ำตอนหลายช็อตยิงพร้อมกัน
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const alive = useRef(true);
   useEffect(() => () => { alive.current = false; Object.values(timers.current).forEach(clearTimeout); }, []);
@@ -72,13 +74,59 @@ export default function Storyboard({
   function del(id: string) { setShots((prev) => prev.filter((s) => s.id !== id)); }
   function addShot() { setShots((prev) => [...prev, { id: newId(), name: T('ช็อตใหม่', 'New shot'), desc: '' }]); }
 
+  // ช็อตนี้มี "คน" ไหม (ดูทั้งชื่อและคำบรรยาย)
+  function isPersonShot(shot: Shot) {
+    return /พรีเซนเตอร์|presenter|คน|ผู้หญิง|ผู้ชาย|selfie|ถือสินค้า|ใช้สินค้า/i.test(`${shot.name} ${shot.desc}`);
+  }
+  // poll แบบรอผลจนเสร็จ แล้วคืน path (ใช้ตอนล็อกหน้าพรีเซนเตอร์)
+  function pollToPath(task: any): Promise<string | null> {
+    return new Promise((resolve) => {
+      const tick = async () => {
+        try {
+          const r = await pollShotImage(task);
+          if (!alive.current) return resolve(null);
+          if (r.state === 'pending') { setTimeout(tick, 2500); return; }
+          resolve(r.state === 'done' ? (r.path ?? null) : null);
+        } catch { resolve(null); }
+      };
+      setTimeout(tick, 2500);
+    });
+  }
+  // ล็อกหน้าพรีเซนเตอร์ AI ไว้ 1 รูป (ครั้งเดียว) แล้วให้ทุกช็อตที่มีคนอ้างอิงหน้านี้ → คนเดียวกันทุกช็อต
+  function getAvatarRef(): Promise<string | null> {
+    if (presenterPath) return Promise.resolve(null); // อัพรูปคนเองแล้ว → ช็อตอ้างอิงรูปนั้นตรงๆ
+    if (!avatar) return Promise.resolve(null);
+    if (avatarRef) return Promise.resolve(avatarRef);
+    if (avatarRefPromise.current) return avatarRefPromise.current;
+    avatarRefPromise.current = (async () => {
+      const input: ShotInput = {
+        shotName: 'presenter portrait',
+        shotDesc: 'clean well-lit upper-body portrait, neutral friendly pose, looking straight at camera, simple soft background',
+        ratio, mood, brief: briefFor(), avatar,
+      };
+      const r = await startShotImage(input);
+      if (!alive.current || r.error || !r.task) { avatarRefPromise.current = null; return null; }
+      const path = await pollToPath(r.task);
+      if (path) setAvatarRef(path); else avatarRefPromise.current = null;
+      return path;
+    })();
+    return avatarRefPromise.current;
+  }
+
   async function genShot(shot: Shot) {
     setImg(shot.id, { loading: true, err: undefined, needCredits: false, url: undefined });
+    // ช็อตที่มีคน + ใช้ Avatar AI → ล็อก/ดึงหน้าพรีเซนเตอร์ก่อน เพื่อให้เป็นคนเดียวกัน
+    let presenterRefPath: string | null = null;
+    if (isPersonShot(shot) && !presenterPath && avatar) {
+      presenterRefPath = await getAvatarRef();
+      if (!alive.current) return;
+    }
     const input: ShotInput = {
       shotName: shot.name, shotDesc: shot.desc, ratio, mood,
       brief: briefFor(),
       productPath: productPath ?? null,
       presenterPath: presenterPath ?? null,
+      presenterRefPath,
       avatar: avatar ?? null,
     };
     const r = await startShotImage(input);
@@ -131,6 +179,12 @@ export default function Storyboard({
             </button>
             <span className="muted" style={{ fontSize: 13 }}>{T(`ภาพตัวอย่าง ${SHOT_IMG_COST} เครดิต/ช็อต · รวม ~${pendingCount * SHOT_IMG_COST} เครดิต`, `${SHOT_IMG_COST} cr/shot · ~${pendingCount * SHOT_IMG_COST} cr total`)}</span>
           </div>
+          {!!avatar && !presenterPath && !avatarRef && shots.some(isPersonShot) && (
+            <p className="muted" style={{ fontSize: 12.5, marginTop: 6 }}>
+              {T(`* ครั้งแรกจะล็อกหน้าพรีเซนเตอร์ AI ไว้ 1 รูป (+${SHOT_IMG_COST} เครดิต) เพื่อให้ทุกช็อตที่มีคนเป็น "คนเดียวกัน"`,
+                 `* First run locks one AI presenter face (+${SHOT_IMG_COST} cr) so every person shot is the same character`)}
+            </p>
+          )}
 
           {shots.map((s, i) => {
             const im = imgs[s.id] || {};

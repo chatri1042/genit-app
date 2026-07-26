@@ -78,7 +78,7 @@ export async function startGeneration(jobId: string): Promise<GenState> {
   // Seedance รับ aspect_ratio ตรงๆ (job.ratio: 9:16 / 16:9 / 1:1 / 4:5)
   const seedanceRatio = job.ratio === '16:9' ? '16:9' : job.ratio === '1:1' ? '1:1' : job.ratio === '4:5' ? '3:4' : '9:16';
   const scriptFull = job.script ? String(job.script).slice(0, 300) : '';
-  const isPresenterShot = (name: string) => /พรีเซนเตอร์|presenter|คน|talk|selfie|intro|เปิดเรื่อง/i.test(name || '');
+  const isPresenterShot = (t: string) => /พรีเซนเตอร์|presenter|คน|ผู้หญิง|ผู้ชาย|talk|selfie|intro|เปิดเรื่อง|ถือสินค้า|ใช้สินค้า/i.test(t || '');
 
   // ภาพจากสตอรีบอร์ด (แต่ละช็อตมี imgPath ใน bucket 'outputs') — ถ้าไม่มีจริงๆ ค่อยใช้รูปสินค้าแทน
   const shotList: any[] = Array.isArray(job.shots) ? job.shots : [];
@@ -103,7 +103,7 @@ export async function startGeneration(jobId: string): Promise<GenState> {
     } else if (shotClips.length) {
       // มีสตอรีบอร์ด → ขยับแต่ละช็อตเป็นคลิป (Seedance, แนวตั้ง 9:16 + เสียง) แล้วต่อเป็นวิดีโอเดียวใน pollJob
       for (const c of shotClips) {
-        const presenter = isPresenterShot(c.name);
+        const presenter = isPresenterShot(`${c.name} ${c.desc}`);
         let shotPrompt = `${prompt}${c.desc ? ', ' + c.desc.slice(0, 120) : ''}`;
         // ช็อตที่มีคน → ให้พูดตามสคริปต์ + ขยับปาก (ทดสอบเสียงไทย), ช็อตอื่น → กล้องเคลื่อนนุ่มๆ
         if (presenter && scriptFull) shotPrompt += `. The presenter looks at the camera and speaks naturally with lip-sync, saying in Thai: "${scriptFull}"`;

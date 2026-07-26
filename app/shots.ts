@@ -25,9 +25,10 @@ export type Avatar = { gender?: string; age?: string; ethnicity?: string };
 export type ShotInput = {
   shotName: string; shotDesc: string; ratio: string; mood?: string;
   brief?: { point?: string; brand_description?: string };
-  productPath?: string | null;   // path ใน bucket uploads (รูปสินค้ารูปแรก)
-  presenterPath?: string | null; // path รูปพรีเซนเตอร์ (ถ้าอัพเอง)
-  avatar?: Avatar | null;        // ถ้าใช้ Avatar AI (สร้างคนใหม่)
+  productPath?: string | null;      // path ใน bucket uploads (รูปสินค้ารูปแรก)
+  presenterPath?: string | null;    // path รูปพรีเซนเตอร์ (ถ้าอัพเอง, bucket uploads)
+  presenterRefPath?: string | null; // path รูปหน้าพรีเซนเตอร์ที่ล็อกไว้ (bucket outputs) — ให้ทุกช็อตเป็นคนเดียวกัน
+  avatar?: Avatar | null;           // ถ้าใช้ Avatar AI (สร้างคนใหม่)
 };
 
 const ETH_EN: Record<string, string> = { 'ไทย': 'Thai', 'เอเชียตะวันออก': 'East Asian', 'ลูกครึ่ง': 'mixed-race', 'ตะวันตก': 'Western/Caucasian', 'เอเชียใต้': 'South Asian', 'แอฟริกัน': 'African' };
@@ -38,12 +39,15 @@ function personDesc(av?: Avatar | null): string {
   return `a ${age} ${eth} ${g}`;
 }
 
-// ชนิดของช็อต
-function shotKind(name: string): 'cta' | 'presenter_product' | 'presenter' | 'place' | 'product' {
-  const n = name || '';
+// ชนิดของช็อต — ดูจากทั้งชื่อและคำบรรยาย (คำบรรยายที่ผู้ใช้พิมพ์ควรมีน้ำหนักกว่าชื่อ default)
+// จัดลำดับให้ "มีคน" มาก่อน CTA เพราะถ้าผู้ใช้ระบุพรีเซนเตอร์ในการ์ด CTA ก็ต้องมีคน
+function shotKind(text: string): 'cta' | 'presenter_product' | 'presenter' | 'place' | 'product' {
+  const n = text || '';
+  const hasPerson = /พรีเซนเตอร์|presenter|คน|ผู้หญิง|ผู้ชาย|selfie/i.test(n);
+  const hasProduct = /สินค้า|product|ถือ|ใช้|hold/i.test(n);
+  if (hasPerson && hasProduct) return 'presenter_product';
+  if (hasPerson) return 'presenter';
   if (/CTA|cta/i.test(n)) return 'cta';
-  if (/พรีเซนเตอร์|presenter/i.test(n) && /สินค้า|product|ใช้|ถือ/i.test(n)) return 'presenter_product';
-  if (/พรีเซนเตอร์|presenter|คน/i.test(n)) return 'presenter';
   if (/สถานที่|บรรยากาศ|scene|establishing|place/i.test(n)) return 'place';
   return 'product';
 }
@@ -77,7 +81,7 @@ function productNoun(brief?: string): string {
 }
 
 function buildPrompt(input: ShotInput, mode: 'i2i' | 't2i', anchor: 'product' | 'person' | 'none'): string {
-  const kind = shotKind(input.shotName);
+  const kind = shotKind(`${input.shotName} ${input.shotDesc || ''}`);
   const who = personDesc(input.avatar);
   const hint = sceneHint(input.brief?.point);
   const noun = productNoun(input.brief?.point);
@@ -115,11 +119,18 @@ export async function startShotImage(input: ShotInput): Promise<{ task?: FalTask
   const balance = await getCreditBalance(user.id);
   if (balance < SHOT_IMG_COST) return { needCredits: true, error: `เครดิตไม่พอ (ต้องมีอย่างน้อย ${SHOT_IMG_COST})` };
 
-  const kind = shotKind(input.shotName);
+  const kind = shotKind(`${input.shotName} ${input.shotDesc || ''}`);
   const [productUrl, presenterUrl] = await Promise.all([
     signUploads(supabase, input.productPath),
     signUploads(supabase, input.presenterPath),
   ]);
+  // หน้าพรีเซนเตอร์ที่ล็อกไว้ (อยู่ bucket outputs) — ใช้เมื่อไม่ได้อัพรูปคนเอง เพื่อให้ทุกช็อตเป็นคนเดียวกัน
+  let presenterRefUrl = '';
+  if (!presenterUrl && input.presenterRefPath) {
+    const { data } = await supabase.storage.from('outputs').createSignedUrl(input.presenterRefPath, 3600);
+    presenterRefUrl = data?.signedUrl ?? '';
+  }
+  const personRef = presenterUrl || presenterRefUrl; // รูปอ้างอิงหน้าคน (อัพเอง หรือหน้า AI ที่ล็อกไว้)
   const who = personDesc(input.avatar);
   const setting = sceneHint(input.brief?.point) || 'a tidy aesthetic setting that suits the product';
   const extra = [input.shotDesc ? `Also: ${input.shotDesc}.` : '', input.mood ? `Mood: ${MOOD_EN[input.mood] || input.mood}.` : ''].filter(Boolean).join(' ');
@@ -131,13 +142,13 @@ export async function startShotImage(input: ShotInput): Promise<{ task?: FalTask
     if (productUrl) refs.push(productUrl);
     prompt = `Create a premium advertising hero shot. Use the exact product from the reference image and keep it identical (same shape, color, pattern, texture and label). Place it ${setting} on a clean premium background with dramatic soft lighting and empty space for text. Photorealistic. ${extra} No text, no watermark.`;
   } else if (kind === 'presenter_product') {
-    if (presenterUrl) refs.push(presenterUrl);
+    if (personRef) refs.push(personRef);
     if (productUrl) refs.push(productUrl);
-    const person = presenterUrl ? 'the same person from the reference image' : who;
+    const person = personRef ? 'the exact same person from the first reference image (keep the same face, hair and look)' : who;
     prompt = `Create a photorealistic UGC phone-camera photo of ${person}, friendly and smiling, naturally holding and presenting the product from the reference image to the camera. Keep the product exactly identical to its reference image (same shape, color, pattern and label). Setting: ${setting}. ${extra} No text, no watermark.`;
   } else if (kind === 'presenter') {
-    if (presenterUrl) refs.push(presenterUrl);
-    const person = presenterUrl ? 'the same person from the reference image' : who;
+    if (personRef) refs.push(personRef);
+    const person = personRef ? 'the exact same person from the reference image (keep the same face, hair and look)' : who;
     prompt = `Create a photorealistic UGC selfie-style phone-camera photo of ${person}, friendly and smiling, talking to the camera. Setting: ${setting}. ${extra} No text, no watermark.`;
   } else if (kind === 'place') {
     prompt = `A beautiful wide establishing photo, ${setting}, warm cinematic lighting, no people in focus. Photorealistic. ${extra} No text, no watermark.`;
@@ -161,8 +172,8 @@ export async function startShotImage(input: ShotInput): Promise<{ task?: FalTask
     if (/คีย์ fal|เครดิต fal/.test(msg)) return { error: msg, needCredits: true };
     // fallback → flux (กันพัง ถ้าโมเดล Nano Banana มีปัญหา)
     try {
-      const anchor: 'product' | 'person' | 'none' = (kind === 'product' || kind === 'cta') ? 'product' : ((kind === 'presenter' || kind === 'presenter_product') && presenterUrl) ? 'person' : 'none';
-      const refUrl = anchor === 'product' ? productUrl : anchor === 'person' ? presenterUrl : '';
+      const anchor: 'product' | 'person' | 'none' = (kind === 'product' || kind === 'cta') ? 'product' : ((kind === 'presenter' || kind === 'presenter_product') && personRef) ? 'person' : 'none';
+      const refUrl = anchor === 'product' ? productUrl : anchor === 'person' ? personRef : '';
       const fluxPrompt = buildPrompt(input, refUrl ? 'i2i' : 't2i', anchor);
       const task = refUrl
         ? await submitFal(FAL_MODELS.i2i, { image_url: refUrl, prompt: fluxPrompt, strength: 0.85, image_size: ratioToImageSize(input.ratio), num_images: 1 }, 'image')
