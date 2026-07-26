@@ -13,6 +13,8 @@ export const FAL_MODELS = {
   i2v: process.env.FAL_MODEL_I2V || 'fal-ai/kling-video/v1/standard/image-to-video',
   t2v: process.env.FAL_MODEL_T2V || 'fal-ai/ltx-video',
   lipsync: process.env.FAL_MODEL_LIPSYNC || 'fal-ai/sync-lipsync',
+  // ต่อคลิปหลายช็อตเป็นวิดีโอเดียว (ffmpeg บน fal)
+  compose: process.env.FAL_MODEL_COMPOSE || 'fal-ai/ffmpeg-api/compose',
 };
 
 export type FalTask = {
