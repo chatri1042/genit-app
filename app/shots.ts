@@ -50,27 +50,42 @@ function sceneHint(brief?: string): string {
   if (/รีสอร์ท|โรงแรม|คาเฟ่|ร้าน|resort|hotel|cafe|shop|store/i.test(s)) return 'in an inviting, well-designed venue interior';
   return '';
 }
+// เดาคำนามสินค้า (อังกฤษ) เพื่อบอกโมเดลว่าให้ถือ/โชว์อะไร
+function productNoun(brief?: string): string {
+  const s = brief || '';
+  if (/หมอน|pillow/i.test(s)) return 'ergonomic latex pillow';
+  if (/ที่นอน|mattress/i.test(s)) return 'mattress';
+  if (/ผ้าปู|ผ้าห่ม|เครื่องนอน|bedding/i.test(s)) return 'bedding set';
+  if (/ครีม|โลชั่น|cream|lotion/i.test(s)) return 'skincare cream jar';
+  if (/เซรั่ม|serum/i.test(s)) return 'serum bottle';
+  if (/กาแฟ|coffee/i.test(s)) return 'cup of coffee';
+  if (/อาหาร|ขนม|food|dessert/i.test(s)) return 'plate of food';
+  if (/เครื่องดื่ม|drink/i.test(s)) return 'drink';
+  if (/กระเป๋า|bag/i.test(s)) return 'handbag';
+  if (/รองเท้า|shoe/i.test(s)) return 'pair of shoes';
+  if (/เสื้อ|clothes|shirt/i.test(s)) return 'clothing item';
+  return 'product';
+}
 
 function buildPrompt(input: ShotInput, mode: 'i2i' | 't2i', anchor: 'product' | 'person' | 'none'): string {
   const kind = shotKind(input.shotName);
   const who = personDesc(input.avatar);
   const hint = sceneHint(input.brief?.point);
+  const noun = productNoun(input.brief?.point);
   const setting = hint || 'a cozy aesthetic real-life setting that suits the product';
   let scene = '';
-  if (kind === 'cta') scene = `a premium hero shot of the product styled ${setting}, dramatic soft lighting and subtle reflections, minimal composition with empty space for text, high-end e-commerce advertising look`;
-  else if (kind === 'presenter_product') scene = `${who}, friendly and smiling, naturally holding and presenting the product to the camera ${setting}, authentic UGC phone-camera style`;
+  if (kind === 'cta') scene = `a premium advertising hero shot of a ${noun} beautifully staged ${setting}, dramatic soft lighting and subtle reflections, minimal composition with empty space for text, high-end e-commerce look`;
+  else if (kind === 'presenter_product') scene = `${who}, friendly and smiling, holding a ${noun} and presenting it to the camera ${setting}, authentic UGC phone-camera style`;
   else if (kind === 'presenter') scene = `${who}, friendly and smiling, talking to the camera ${setting}, authentic UGC selfie phone-camera style`;
   else if (kind === 'place') scene = 'a beautiful wide establishing shot of the location and atmosphere, warm cinematic lighting, no people in focus';
-  else scene = `the product beautifully restyled into a NEW professional scene ${setting}, soft natural lighting, shallow depth of field, premium lifestyle product photography (not a plain catalog photo)`;
-  // คำสั่งคงของจริง ต่างกันตาม anchor
+  else scene = `a ${noun} beautifully restaged into a completely NEW professional scene ${setting}, new styled background, soft natural lighting, shallow depth of field, premium lifestyle product photography (not a plain catalog photo)`;
+  // i2i product: คงชนิด/สีสินค้าไว้ แต่เปลี่ยนฉากใหม่ทั้งหมด
   let keep = '';
-  if (mode === 'i2i' && anchor === 'product') keep = 'IMPORTANT: keep the product itself (its exact shape, color, pattern, texture and label) identical to the reference image — only change and improve the scene, background, styling and lighting';
+  if (mode === 'i2i' && anchor === 'product') keep = 'keep the product the same type, color and pattern as the reference, but completely restage it into the new scene above with new background and lighting';
   else if (mode === 'i2i' && anchor === 'person') keep = 'keep the same person from the reference image (same face and look)';
   return [
     scene,
     input.shotDesc ? `Extra: ${input.shotDesc}` : '',
-    input.brief?.point ? `The product is: ${input.brief.point}` : '',
-    input.brief?.brand_description ? `Brand: ${input.brief.brand_description}` : '',
     input.mood ? (MOOD_EN[input.mood] || input.mood) : '',
     keep,
     'commercial quality, high detail, sharp focus, photorealistic, no text overlay, no watermark',
@@ -109,10 +124,14 @@ export async function startShotImage(input: ShotInput): Promise<{ task?: FalTask
     // Avatar AI → t2i สร้างคนใหม่
   } else if (kind === 'presenter_product') {
     if (presenterUrl) { refUrl = presenterUrl; anchor = 'person'; strength = 0.6; }
-    else if (productUrl) { refUrl = productUrl; anchor = 'product'; strength = 0.72; } // ยึดสินค้าจริง + เติมคนรอบๆ
+    // ไม่มีรูปคน → t2i สร้าง "คนถือสินค้า" (i2i รูปสินค้าเติมคนไม่ได้ ได้แต่รูปสินค้า)
+  } else if (kind === 'product') {
+    // ช็อตสินค้า → เปลี่ยนฉากใหม่ให้สวย ต้องแปลงเยอะ (strength สูง)
+    if (productUrl) { refUrl = productUrl; anchor = 'product'; strength = 0.88; }
+  } else if (kind === 'cta') {
+    if (productUrl) { refUrl = productUrl; anchor = 'product'; strength = 0.85; }
   } else {
-    // product / cta / place → ยึดสินค้าจริง แต่เปลี่ยนฉาก/แสงให้สวยขึ้น (strength สูงพอให้แปลงฉาก)
-    if (productUrl) { refUrl = productUrl; anchor = 'product'; strength = kind === 'product' ? 0.66 : kind === 'cta' ? 0.7 : 0.6; }
+    // place → t2i ฉากล้วน
   }
 
   const prompt = buildPrompt(input, refUrl ? 'i2i' : 't2i', anchor);
