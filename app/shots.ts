@@ -111,41 +111,56 @@ export async function startShotImage(input: ShotInput): Promise<{ task?: FalTask
     signUploads(supabase, input.productPath),
     signUploads(supabase, input.presenterPath),
   ]);
-  // เลือกวิธี:
-  //  - ช็อตคน + มีรูปคนจริง → i2i รูปคน
-  //  - ช็อตคน + ใช้ Avatar AI (ไม่มีรูปคน) → t2i สร้างคนใหม่ (ห้ามเอารูปสินค้ามาเป็น ref ไม่งั้นได้แต่รูปสินค้า)
-  //  - ช็อตสินค้า/สถานที่/CTA → i2i รูปสินค้า (ถ้ามี) เพื่อคงของจริง
-  // strength (flux i2i): ยิ่งสูง = แปลงจากรูปเดิมมาก · ต่ำ = คงเดิม
-  let refUrl = '';
-  let strength = 0.6;
-  let anchor: 'product' | 'person' | 'none' = 'none';
-  if (kind === 'presenter') {
-    if (presenterUrl) { refUrl = presenterUrl; anchor = 'person'; strength = 0.55; }
-    // Avatar AI → t2i สร้างคนใหม่
+  const who = personDesc(input.avatar);
+  const setting = sceneHint(input.brief?.point) || 'a tidy aesthetic setting that suits the product';
+  const extra = [input.shotDesc ? `Also: ${input.shotDesc}.` : '', input.mood ? `Mood: ${MOOD_EN[input.mood] || input.mood}.` : ''].filter(Boolean).join(' ');
+
+  // สร้าง prompt (ภาษาธรรมชาติ) + รูปอ้างอิง สำหรับ Nano Banana (คงสินค้า/คนเป๊ะ + วางในฉากใหม่)
+  const refs: string[] = [];
+  let prompt = '';
+  if (kind === 'cta') {
+    if (productUrl) refs.push(productUrl);
+    prompt = `Create a premium advertising hero shot. Use the exact product from the reference image and keep it identical (same shape, color, pattern, texture and label). Place it ${setting} on a clean premium background with dramatic soft lighting and empty space for text. Photorealistic. ${extra} No text, no watermark.`;
   } else if (kind === 'presenter_product') {
-    if (presenterUrl) { refUrl = presenterUrl; anchor = 'person'; strength = 0.6; }
-    // ไม่มีรูปคน → t2i สร้าง "คนถือสินค้า" (i2i รูปสินค้าเติมคนไม่ได้ ได้แต่รูปสินค้า)
-  } else if (kind === 'product') {
-    // ช็อตสินค้า → เปลี่ยนฉากใหม่ให้สวย ต้องแปลงเยอะ (strength สูง)
-    if (productUrl) { refUrl = productUrl; anchor = 'product'; strength = 0.88; }
-  } else if (kind === 'cta') {
-    if (productUrl) { refUrl = productUrl; anchor = 'product'; strength = 0.85; }
-  } else {
-    // place → t2i ฉากล้วน
+    if (presenterUrl) refs.push(presenterUrl);
+    if (productUrl) refs.push(productUrl);
+    const person = presenterUrl ? 'the same person from the reference image' : who;
+    prompt = `Create a photorealistic UGC phone-camera photo of ${person}, friendly and smiling, naturally holding and presenting the product from the reference image to the camera. Keep the product exactly identical to its reference image (same shape, color, pattern and label). Setting: ${setting}. ${extra} No text, no watermark.`;
+  } else if (kind === 'presenter') {
+    if (presenterUrl) refs.push(presenterUrl);
+    const person = presenterUrl ? 'the same person from the reference image' : who;
+    prompt = `Create a photorealistic UGC selfie-style phone-camera photo of ${person}, friendly and smiling, talking to the camera. Setting: ${setting}. ${extra} No text, no watermark.`;
+  } else if (kind === 'place') {
+    prompt = `A beautiful wide establishing photo, ${setting}, warm cinematic lighting, no people in focus. Photorealistic. ${extra} No text, no watermark.`;
+  } else { // product
+    if (productUrl) refs.push(productUrl);
+    prompt = `Create a new professional lifestyle product photograph. Use the exact product shown in the reference image and keep it identical (same shape, color, pattern, texture and label — do not redesign it). Restage it beautifully ${setting}, with soft natural lighting, a tidy styled background and shallow depth of field, premium e-commerce look. Photorealistic. ${extra} No text, no watermark.`;
   }
 
-  const prompt = buildPrompt(input, refUrl ? 'i2i' : 't2i', anchor);
+  const useEdit = refs.length > 0;
+  const model = useEdit ? FAL_MODELS.nanoEdit : FAL_MODELS.nano;
+  const body: Record<string, any> = { prompt, num_images: 1 };
+  if (useEdit) body.image_urls = refs;
+
   try {
-    let task: FalTask;
-    if (refUrl) {
-      task = await submitFal(FAL_MODELS.i2i, { image_url: refUrl, prompt, strength, image_size: ratioToImageSize(input.ratio), num_images: 1 }, 'image');
-    } else {
-      task = await submitFal(FAL_MODELS.image, { prompt, image_size: ratioToImageSize(input.ratio), num_images: 1 }, 'image');
-    }
+    const task = await submitFal(model, body, 'image');
     return { task };
   } catch (e) {
     const msg = String((e as Error).message);
-    return { error: msg, needCredits: /คีย์ fal|เครดิต fal/.test(msg) };
+    if (/คีย์ fal|เครดิต fal/.test(msg)) return { error: msg, needCredits: true };
+    // fallback → flux (กันพัง ถ้าโมเดล Nano Banana มีปัญหา)
+    try {
+      const anchor: 'product' | 'person' | 'none' = (kind === 'product' || kind === 'cta') ? 'product' : ((kind === 'presenter' || kind === 'presenter_product') && presenterUrl) ? 'person' : 'none';
+      const refUrl = anchor === 'product' ? productUrl : anchor === 'person' ? presenterUrl : '';
+      const fluxPrompt = buildPrompt(input, refUrl ? 'i2i' : 't2i', anchor);
+      const task = refUrl
+        ? await submitFal(FAL_MODELS.i2i, { image_url: refUrl, prompt: fluxPrompt, strength: 0.85, image_size: ratioToImageSize(input.ratio), num_images: 1 }, 'image')
+        : await submitFal(FAL_MODELS.image, { prompt: fluxPrompt, image_size: ratioToImageSize(input.ratio), num_images: 1 }, 'image');
+      return { task };
+    } catch (e2) {
+      const m2 = String((e2 as Error).message);
+      return { error: m2, needCredits: /คีย์ fal|เครดิต fal/.test(m2) };
+    }
   }
 }
 
