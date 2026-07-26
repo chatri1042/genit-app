@@ -91,6 +91,7 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
   const [thumbnail, setThumbnail] = useState(false);
   const [thumbCount, setThumbCount] = useState(2);
   const [logo, setLogo] = useState(false);
+  const [logoImg, setLogoImg] = useState<{ path: string; preview: string } | null>(null);
   const [moreAcc, setMoreAcc] = useState(false);
 
   const [presenterMode, setPresenterMode] = useState('upload');
@@ -177,6 +178,12 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
     const out = await upload(files, 'place-'); setUploading(false); e.target.value = '';
     setPlaceImgs((p) => [...p, ...out]);
   }
+  async function onPickLogo(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]; if (!file) return;
+    setUploading(true); setErr('');
+    const out = await upload([file], 'logo-'); setUploading(false); e.target.value = '';
+    if (out[0]) { setLogoImg(out[0]); setLogo(true); }
+  }
   function applyPreset(p: typeof PRESETS[number]) {
     setOutput('video');
     setHasPresenter(p.pres); setHasProduct(p.prod);
@@ -232,7 +239,7 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
 
   const allImages = [...images.map((i) => i.path), ...(useBrandImgs ? pickedAssets : [])];
   const extra = JSON.stringify({
-    mood, image_text: { main: imgMain, sub: imgSub }, thumbnail, thumb_count: thumbCount, logo,
+    mood, image_text: { main: imgMain, sub: imgSub }, thumbnail, thumb_count: thumbCount, logo, logo_image: logoImg?.path ?? null,
     voice_detail: voiceMode === 'ai' ? { gender: vGender, age: vAge, tone: vTone, voice: vPick, signature: vSignature } : {},
     subjects: { presenter: hasPresenter, product: hasProduct, place: hasPlace },
     presenter: hasPresenter ? { mode: presenterMode, consent: consentPhoto, photo: presenterMode === 'upload' ? (presenterImg?.path ?? null) : null, avatar: presenterMode === 'ai' ? { gender: avGender, age: avAge, ethnicity: avEth } : null } : null,
@@ -542,6 +549,21 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
               <Toggle label={T('สร้างภาพปก (Thumbnail)', 'Generate thumbnails')} checked={thumbnail} onChange={setThumbnail} />
               {thumbnail && <div style={{ padding: '8px 0' }}><span className="mini-label" style={{ marginTop: 0 }}>{T('จำนวนภาพปก', 'Thumbnails')} (+2 เครดิต/รูป)</span><Stepper value={thumbCount} setValue={setThumbCount} min={1} max={4} /></div>}
               <Toggle label={T('ใส่โลโก้แบรนด์ตอนจบ', 'Add brand logo')} checked={logo} onChange={setLogo} />
+              {logo && (
+                <div style={{ padding: '4px 0 8px' }}>
+                  <span className="mini-label" style={{ marginTop: 0 }}>{T('อัพไฟล์โลโก้ (PNG พื้นใสได้ยิ่งดี)', 'Upload logo (PNG with transparent bg preferred)')}</span>
+                  <div className="uploads">
+                    {logoImg ? (
+                      <div style={{ position: 'relative' }}>
+                        <img className="up-thumb" src={logoImg.preview} alt="" style={{ background: '#eee' }} />
+                        <button type="button" onClick={() => setLogoImg(null)} style={{ position: 'absolute', top: -6, right: -6, background: '#1A1A17', color: '#fff', border: 'none', borderRadius: '50%', width: 22, height: 22, cursor: 'pointer' }}>×</button>
+                      </div>
+                    ) : (
+                      <label className="up-add">{uploading ? '…' : '+'}<input type="file" accept="image/*" hidden onChange={onPickLogo} /></label>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -564,6 +586,8 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
             duration={duration}
             subjects={{ presenter: hasPresenter, product: hasProduct, place: hasPlace }}
             briefFor={briefFor}
+            productPath={images[0]?.path ?? (useBrandImgs ? pickedAssets[0] : '') ?? null}
+            presenterPath={presenterMode === 'upload' ? (presenterImg?.path ?? null) : null}
           />
         )}
 

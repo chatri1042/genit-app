@@ -6,6 +6,7 @@ const QUEUE = 'https://queue.fal.run';
 
 export const FAL_MODELS = {
   image: process.env.FAL_MODEL_IMAGE || 'fal-ai/flux/schnell',
+  i2i: process.env.FAL_MODEL_I2I || 'fal-ai/flux/dev/image-to-image', // เจนภาพโดยอ้างอิงรูปที่อัพ (สินค้า/คน)
   i2v: process.env.FAL_MODEL_I2V || 'fal-ai/kling-video/v1/standard/image-to-video',
   t2v: process.env.FAL_MODEL_T2V || 'fal-ai/ltx-video',
   lipsync: process.env.FAL_MODEL_LIPSYNC || 'fal-ai/sync-lipsync',

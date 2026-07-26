@@ -15,17 +15,19 @@ function newId() {
 function recommend(dur: number) { return Math.min(8, Math.max(3, Math.round(dur / 4))); }
 
 export default function Storyboard({
-  shots, setShots, ratio, mood, duration, subjects, briefFor,
+  shots, setShots, ratio, mood, duration, subjects, briefFor, productPath, presenterPath,
 }: {
   shots: Shot[]; setShots: (s: Shot[]) => void;
   ratio: string; mood: string; duration: number; subjects: Subjects;
-  briefFor: () => { name?: string; point?: string; brand_description?: string };
+  briefFor: () => { point?: string; brand_description?: string };
+  productPath?: string | null; presenterPath?: string | null;
 }) {
   const { lang } = useLang();
   const T = (th: string, en: string) => (lang === 'th' ? th : en);
   const rec = recommend(duration);
   const [count, setCount] = useState(rec);
   const [imgs, setImgs] = useState<Record<string, ImgState>>({});
+  const [lightbox, setLightbox] = useState<string | null>(null); // รูปที่กดดูใหญ่
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const alive = useRef(true);
   useEffect(() => () => { alive.current = false; Object.values(timers.current).forEach(clearTimeout); }, []);
@@ -71,6 +73,8 @@ export default function Storyboard({
     const input: ShotInput = {
       shotName: shot.name, shotDesc: shot.desc, ratio, mood,
       brief: briefFor(),
+      productPath: productPath ?? null,
+      presenterPath: presenterPath ?? null,
     };
     const r = await startShotImage(input);
     if (!alive.current) return;
@@ -128,10 +132,11 @@ export default function Storyboard({
             return (
               <div className="shot" key={s.id} style={{ alignItems: 'flex-start' }}>
                 <div className="shot-num">{i + 1}</div>
-                <div className="shot-thumb" style={{ width: 92, height: 92, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                <div className="shot-thumb" style={{ width: 92, height: 92, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', cursor: im.url ? 'zoom-in' : 'default' }} onClick={() => im.url && setLightbox(im.url)} title={im.url ? T('กดดูรูปใหญ่', 'Click to enlarge') : ''}>
                   {im.url ? <img src={im.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     : im.loading ? <span className="spinner" style={{ width: 22, height: 22 }} />
                     : <span className="muted" style={{ fontSize: 22 }}>🎞️</span>}
+                  {im.url && <span style={{ position: 'absolute', bottom: 3, right: 3, background: 'rgba(0,0,0,.55)', color: '#fff', borderRadius: 6, fontSize: 11, padding: '1px 5px' }}>⤢</span>}
                 </div>
                 <div className="shot-body">
                   <input type="text" value={s.name} onChange={(e) => patchShot(s.id, { name: e.target.value })} />
@@ -152,6 +157,14 @@ export default function Storyboard({
           })}
           <button type="button" className="btn-ghost" style={{ padding: '6px 14px', borderRadius: 8, cursor: 'pointer', font: 'inherit', fontSize: 13, marginTop: 8 }} onClick={addShot}>+ {T('เพิ่มช็อต', 'Add shot')}</button>
         </>
+      )}
+
+      {/* ดูรูปใหญ่ (lightbox) */}
+      {lightbox && (
+        <div onClick={() => setLightbox(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.82)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, cursor: 'zoom-out' }}>
+          <img src={lightbox} alt="" style={{ maxWidth: '92vw', maxHeight: '90vh', borderRadius: 12, boxShadow: '0 10px 50px rgba(0,0,0,.5)' }} />
+          <button type="button" onClick={() => setLightbox(null)} style={{ position: 'fixed', top: 18, right: 22, background: '#fff', border: 'none', borderRadius: '50%', width: 40, height: 40, fontSize: 20, cursor: 'pointer' }}>×</button>
+        </div>
       )}
     </div>
   );
