@@ -60,7 +60,6 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
   const [hasProduct, setHasProduct] = useState(true);
   const [hasPlace, setHasPlace] = useState(false);
   const [placeImgs, setPlaceImgs] = useState<{ path: string; preview: string }[]>([]);
-  const [placeDesc, setPlaceDesc] = useState('');
   const [ratio, setRatio] = useState('9:16');
   const [duration, setDuration] = useState(20);
   const [count, setCount] = useState(2);
@@ -237,7 +236,7 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
     voice_detail: voiceMode === 'ai' ? { gender: vGender, age: vAge, tone: vTone, voice: vPick, signature: vSignature } : {},
     subjects: { presenter: hasPresenter, product: hasProduct, place: hasPlace },
     presenter: hasPresenter ? { mode: presenterMode, consent: consentPhoto, photo: presenterMode === 'upload' ? (presenterImg?.path ?? null) : null, avatar: presenterMode === 'ai' ? { gender: avGender, age: avAge, ethnicity: avEth } : null } : null,
-    place: hasPlace ? { photos: placeImgs.map((i) => i.path), desc: placeDesc } : null,
+    place: hasPlace ? { photos: placeImgs.map((i) => i.path) } : null,
     spoken_lang: spokenLang, presenter_gender: presenterGender, ui_lang: lang,
   });
 
@@ -396,9 +395,7 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
               ))}
               <label className="up-add">{uploading ? '…' : '+'}<input type="file" accept="image/*" multiple hidden onChange={onPickPlace} /></label>
             </div>
-            <label className="field" style={{ marginTop: 10 }}><span>{T('บรรยายสถานที่ / บรรยากาศ', 'Describe the place / scene')}</span>
-              <input type="text" value={placeDesc} onChange={(e) => setPlaceDesc(e.target.value)} placeholder={T('เช่น รีสอร์ทริมทะเล โทนอบอุ่น · คาเฟ่โทนไม้', 'e.g. beachfront resort, warm tone')} />
-            </label>
+            <p className="muted" style={{ fontSize: 13, marginTop: 6 }}>{T('ไม่มีรูปก็ได้ — พิมพ์บรรยายสถานที่ในช่อง “รายละเอียด / บรีฟ” ด้านล่างได้เลย', 'No photo? Just describe the place in the “Details / brief” box below.')}</p>
           </>
         )}
 
@@ -566,7 +563,6 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
             mood={mood}
             duration={duration}
             subjects={{ presenter: hasPresenter, product: hasProduct, place: hasPlace }}
-            placeDesc={placeDesc}
             briefFor={briefFor}
           />
         )}

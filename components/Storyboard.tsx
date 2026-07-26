@@ -15,10 +15,10 @@ function newId() {
 function recommend(dur: number) { return Math.min(8, Math.max(3, Math.round(dur / 4))); }
 
 export default function Storyboard({
-  shots, setShots, ratio, mood, duration, subjects, placeDesc, briefFor,
+  shots, setShots, ratio, mood, duration, subjects, briefFor,
 }: {
   shots: Shot[]; setShots: (s: Shot[]) => void;
-  ratio: string; mood: string; duration: number; subjects: Subjects; placeDesc: string;
+  ratio: string; mood: string; duration: number; subjects: Subjects;
   briefFor: () => { name?: string; point?: string; brand_description?: string };
 }) {
   const { lang } = useLang();
@@ -70,7 +70,7 @@ export default function Storyboard({
     setImg(shot.id, { loading: true, err: undefined, needCredits: false, url: undefined });
     const input: ShotInput = {
       shotName: shot.name, shotDesc: shot.desc, ratio, mood,
-      brief: briefFor(), placeDesc: subjects.place ? placeDesc : undefined,
+      brief: briefFor(),
     };
     const r = await startShotImage(input);
     if (!alive.current) return;
