@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import { startShotImage, pollShotImage, type ShotInput } from '@/app/shots';
 import { useLang } from './LanguageProvider';
 
@@ -17,7 +17,7 @@ function recommend(dur: number) { return Math.min(8, Math.max(3, Math.round(dur 
 export default function Storyboard({
   shots, setShots, ratio, mood, duration, subjects, briefFor, productPath, presenterPath, avatar,
 }: {
-  shots: Shot[]; setShots: (s: Shot[]) => void;
+  shots: Shot[]; setShots: Dispatch<SetStateAction<Shot[]>>;
   ratio: string; mood: string; duration: number; subjects: Subjects;
   briefFor: () => { point?: string; brand_description?: string };
   productPath?: string | null; presenterPath?: string | null;
@@ -57,17 +57,20 @@ export default function Storyboard({
     setImgs({});
     setShots(body);
   }
+  // ใช้ functional update เสมอ — กันช็อตที่เจนพร้อมกันเขียนทับ imgPath ของกันเอง (stale closure)
   function patchShot(id: string, patch: Partial<Shot>) {
-    setShots(shots.map((s) => (s.id === id ? { ...s, ...patch } : s)));
+    setShots((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
   }
   function setImg(id: string, patch: ImgState) { setImgs((p) => ({ ...p, [id]: { ...p[id], ...patch } })); }
 
   function move(i: number, d: number) {
-    const j = i + d; if (j < 0 || j >= shots.length) return;
-    const s = [...shots]; [s[i], s[j]] = [s[j], s[i]]; setShots(s);
+    setShots((prev) => {
+      const j = i + d; if (j < 0 || j >= prev.length) return prev;
+      const s = [...prev]; [s[i], s[j]] = [s[j], s[i]]; return s;
+    });
   }
-  function del(id: string) { setShots(shots.filter((s) => s.id !== id)); }
-  function addShot() { setShots([...shots, { id: newId(), name: T('ช็อตใหม่', 'New shot'), desc: '' }]); }
+  function del(id: string) { setShots((prev) => prev.filter((s) => s.id !== id)); }
+  function addShot() { setShots((prev) => [...prev, { id: newId(), name: T('ช็อตใหม่', 'New shot'), desc: '' }]); }
 
   async function genShot(shot: Shot) {
     setImg(shot.id, { loading: true, err: undefined, needCredits: false, url: undefined });

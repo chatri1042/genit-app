@@ -11,10 +11,12 @@ export const FAL_MODELS = {
   nano: process.env.FAL_MODEL_NANO || 'fal-ai/nano-banana',
   nanoEdit: process.env.FAL_MODEL_NANO_EDIT || 'fal-ai/nano-banana/edit',
   i2v: process.env.FAL_MODEL_I2V || 'fal-ai/kling-video/v1/standard/image-to-video',
+  // Seedance 2.0 image-to-video — มี aspect_ratio 9:16 ตรงๆ + เจนเสียง/พูดขยับปากในตัว
+  seedance: process.env.FAL_MODEL_SEEDANCE || 'bytedance/seedance-2.0/image-to-video',
   t2v: process.env.FAL_MODEL_T2V || 'fal-ai/ltx-video',
   lipsync: process.env.FAL_MODEL_LIPSYNC || 'fal-ai/sync-lipsync',
-  // ต่อคลิปหลายช็อตเป็นวิดีโอเดียว (ffmpeg บน fal)
-  compose: process.env.FAL_MODEL_COMPOSE || 'fal-ai/ffmpeg-api/compose',
+  // ต่อคลิปหลายช็อตเป็นวิดีโอเดียว (endpoint เฉพาะทางของ fal — รับลิสต์คลิป + บังคับความละเอียดได้)
+  merge: process.env.FAL_MODEL_MERGE || 'fal-ai/ffmpeg-api/merge-videos',
 };
 
 export type FalTask = {

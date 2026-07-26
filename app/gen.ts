@@ -75,16 +75,22 @@ export async function startGeneration(jobId: string): Promise<GenState> {
     inputImageUrl = signed?.signedUrl ?? '';
   }
 
-  // ภาพจากสตอรีบอร์ด (แต่ละช็อตมี imgPath ใน bucket 'outputs') — ถ้าไม่มีก็ใช้รูปสินค้าแทน
-  // kling image-to-video ยึดสัดส่วนตาม "รูปต้นทาง" — ภาพช็อตเป็นแนวตั้งอยู่แล้ว คลิปจะออกมาแนวตั้งเอง
+  // Seedance รับ aspect_ratio ตรงๆ (job.ratio: 9:16 / 16:9 / 1:1 / 4:5)
+  const seedanceRatio = job.ratio === '16:9' ? '16:9' : job.ratio === '1:1' ? '1:1' : job.ratio === '4:5' ? '3:4' : '9:16';
+  const scriptFull = job.script ? String(job.script).slice(0, 300) : '';
+  const isPresenterShot = (name: string) => /พรีเซนเตอร์|presenter|คน|talk|selfie|intro|เปิดเรื่อง/i.test(name || '');
+
+  // ภาพจากสตอรีบอร์ด (แต่ละช็อตมี imgPath ใน bucket 'outputs') — ถ้าไม่มีจริงๆ ค่อยใช้รูปสินค้าแทน
   const shotList: any[] = Array.isArray(job.shots) ? job.shots : [];
-  const shotImages: string[] = [];
+  const shotClips: { url: string; name: string; desc: string }[] = [];
   for (const s of shotList) {
+    let url = '';
     if (s?.imgPath) {
       const { data: signed } = await supabase.storage.from('outputs').createSignedUrl(String(s.imgPath), 3600);
-      if (signed?.signedUrl) { shotImages.push(signed.signedUrl); continue; }
+      url = signed?.signedUrl ?? '';
     }
-    if (inputImageUrl) shotImages.push(inputImageUrl); // ช็อตที่ยังไม่มีภาพตัวอย่าง → ใช้รูปสินค้า
+    if (!url && inputImageUrl) url = inputImageUrl; // ช็อตที่ยังไม่มีภาพตัวอย่าง → ใช้รูปสินค้า
+    if (url) shotClips.push({ url, name: String(s?.name || ''), desc: String(s?.desc || '') });
   }
 
   const n = Math.max(1, Math.min(job.count || 1, 6));
@@ -94,17 +100,22 @@ export async function startGeneration(jobId: string): Promise<GenState> {
       for (let i = 0; i < n; i++) {
         tasks.push(await submitFal(FAL_MODELS.image, { prompt, image_size: ratioToImageSize(job.ratio), num_images: 1 }, 'image'));
       }
-    } else if (shotImages.length) {
-      // มีสตอรีบอร์ด → ขยับแต่ละช็อตเป็นคลิป (สัดส่วนตามที่เลือก) แล้วค่อยต่อเป็นวิดีโอเดียวใน pollJob
-      for (let i = 0; i < shotImages.length; i++) {
-        const line = job.script ? ` ${String(job.script).slice(0, 180)}` : '';
-        const shotDesc = shotList[i]?.desc || shotList[i]?.name || '';
-        const shotPrompt = `${prompt}${shotDesc ? ', ' + String(shotDesc).slice(0, 120) : ''}${line}`;
-        tasks.push(await submitFal(FAL_MODELS.i2v, { prompt: shotPrompt, image_url: shotImages[i], duration: '5' }, 'video'));
+    } else if (shotClips.length) {
+      // มีสตอรีบอร์ด → ขยับแต่ละช็อตเป็นคลิป (Seedance, แนวตั้ง 9:16 + เสียง) แล้วต่อเป็นวิดีโอเดียวใน pollJob
+      for (const c of shotClips) {
+        const presenter = isPresenterShot(c.name);
+        let shotPrompt = `${prompt}${c.desc ? ', ' + c.desc.slice(0, 120) : ''}`;
+        // ช็อตที่มีคน → ให้พูดตามสคริปต์ + ขยับปาก (ทดสอบเสียงไทย), ช็อตอื่น → กล้องเคลื่อนนุ่มๆ
+        if (presenter && scriptFull) shotPrompt += `. The presenter looks at the camera and speaks naturally with lip-sync, saying in Thai: "${scriptFull}"`;
+        else shotPrompt += '. Smooth cinematic camera motion, gentle natural movement';
+        tasks.push(await submitFal(FAL_MODELS.seedance, {
+          prompt: shotPrompt, image_url: c.url,
+          aspect_ratio: seedanceRatio, duration: '5', resolution: '720p', generate_audio: true,
+        }, 'video'));
       }
     } else {
       for (let i = 0; i < n; i++) {
-        if (inputImageUrl) tasks.push(await submitFal(FAL_MODELS.i2v, { prompt: prompt + scriptLine, image_url: inputImageUrl, duration: '5' }, 'video'));
+        if (inputImageUrl) tasks.push(await submitFal(FAL_MODELS.seedance, { prompt: prompt + scriptLine, image_url: inputImageUrl, aspect_ratio: seedanceRatio, duration: '5', resolution: '720p', generate_audio: true }, 'video'));
         else tasks.push(await submitFal(FAL_MODELS.t2v, { prompt: prompt + scriptLine }, 'video'));
       }
     }
@@ -211,8 +222,9 @@ export async function pollJob(jobId: string): Promise<GenState> {
     }
     if (urls.length >= 2) {
       try {
-        const keyframes = urls.map((url, i) => ({ url, timestamp: i * 5, duration: 5 }));
-        const newCompose = await submitFal(FAL_MODELS.compose, { tracks: [{ id: 'v', type: 'video', keyframes }] }, 'video');
+        // บังคับความละเอียดปลายทางให้ทุกคลิปเท่ากัน (แนวตั้ง 720x1280 เป็นค่าเริ่มต้น)
+        const resolution = job.ratio === '16:9' ? { width: 1280, height: 720 } : job.ratio === '1:1' ? { width: 720, height: 720 } : { width: 720, height: 1280 };
+        const newCompose = await submitFal(FAL_MODELS.merge, { video_urls: urls, resolution, target_fps: 30 }, 'video');
         await supabase.from('jobs').update({
           status: 'running',
           output_urls: { ...(job.output_urls ?? {}), tasks, composeTask: newCompose },
