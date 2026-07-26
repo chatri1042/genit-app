@@ -34,7 +34,7 @@ async function signResults(supabase: Awaited<ReturnType<typeof createClient>>, t
   }
   const results: { kind: 'image' | 'video'; url: string }[] = [];
   for (const t of tasks) {
-    if (t.done && t.result_path) {
+    if (t.done && t.result_path && t.kind !== 'audio') {
       const { data: s } = await supabase.storage.from('outputs').createSignedUrl(t.result_path, 3600);
       if (s?.signedUrl) results.push({ kind: t.kind, url: s.signedUrl });
     }
@@ -75,10 +75,12 @@ export async function startGeneration(jobId: string): Promise<GenState> {
     inputImageUrl = signed?.signedUrl ?? '';
   }
 
-  // Seedance รับ aspect_ratio ตรงๆ (job.ratio: 9:16 / 16:9 / 1:1 / 4:5)
-  const seedanceRatio = job.ratio === '16:9' ? '16:9' : job.ratio === '1:1' ? '1:1' : job.ratio === '4:5' ? '3:4' : '9:16';
-  const scriptFull = job.script ? String(job.script).slice(0, 300) : '';
+  const scriptFull = job.script ? String(job.script).slice(0, 500) : '';
   const isPresenterShot = (t: string) => /พรีเซนเตอร์|presenter|คน|ผู้หญิง|ผู้ชาย|talk|selfie|intro|เปิดเรื่อง|ถือสินค้า|ใช้สินค้า/i.test(t || '');
+  // เสียงพากย์: เลือกโทนเสียงตามเพศพรีเซนเตอร์ + ภาษาที่พูด
+  const pGender = job.settings?.presenter_gender || job.settings?.presenter?.avatar?.gender || '';
+  const ttsVoiceId = /ชาย|male|man/i.test(String(pGender)) ? 'Deep_Voice_Man' : 'Wise_Woman';
+  const ttsLangBoost = job.settings?.spoken_lang === 'en' ? 'English' : 'Thai';
 
   // ภาพจากสตอรีบอร์ด (แต่ละช็อตมี imgPath ใน bucket 'outputs') — ถ้าไม่มีจริงๆ ค่อยใช้รูปสินค้าแทน
   const shotList: any[] = Array.isArray(job.shots) ? job.shots : [];
@@ -101,21 +103,29 @@ export async function startGeneration(jobId: string): Promise<GenState> {
         tasks.push(await submitFal(FAL_MODELS.image, { prompt, image_size: ratioToImageSize(job.ratio), num_images: 1 }, 'image'));
       }
     } else if (shotClips.length) {
-      // มีสตอรีบอร์ด → ขยับแต่ละช็อตเป็นคลิป (Seedance, แนวตั้ง 9:16 + เสียง) แล้วต่อเป็นวิดีโอเดียวใน pollJob
-      for (const c of shotClips) {
-        const presenter = isPresenterShot(`${c.name} ${c.desc}`);
-        let shotPrompt = `${prompt}${c.desc ? ', ' + c.desc.slice(0, 120) : ''}`;
-        // ช็อตที่มีคน → ให้พูดตามสคริปต์ + ขยับปาก (ทดสอบเสียงไทย), ช็อตอื่น → กล้องเคลื่อนนุ่มๆ
-        if (presenter && scriptFull) shotPrompt += `. The presenter looks at the camera and speaks naturally with lip-sync, saying in Thai: "${scriptFull}"`;
-        else shotPrompt += '. Smooth cinematic camera motion, gentle natural movement';
-        tasks.push(await submitFal(FAL_MODELS.seedance, {
-          prompt: shotPrompt, image_url: c.url,
-          aspect_ratio: seedanceRatio, duration: '5', resolution: '720p', generate_audio: true,
-        }, 'video'));
+      // ช็อตคน "ช็อตแรก" = พูดตามสคริปต์ (TTS ไทย → ทำปากขยับ), ช็อตอื่น = ขยับภาพเงียบ (Kling) แล้วต่อเป็นวิดีโอเดียว
+      const firstPersonIdx = shotClips.findIndex((c) => isPresenterShot(`${c.name} ${c.desc}`));
+      for (let i = 0; i < shotClips.length; i++) {
+        const c = shotClips[i];
+        if (i === firstPersonIdx && scriptFull) {
+          // สเต็ป 1: ทำเสียงไทยจากสคริปต์ (สเต็ป 2 ทำปากขยับใน pollJob)
+          const t = await submitFal(FAL_MODELS.tts, {
+            text: scriptFull, language_boost: ttsLangBoost,
+            voice_setting: { voice_id: ttsVoiceId, speed: 1, emotion: 'neutral' },
+            audio_setting: { format: 'mp3', sample_rate: 32000 },
+          }, 'audio');
+          t.pipeline = 'lipsync'; t.stage = 'tts'; t.imageUrl = c.url;
+          tasks.push(t);
+        } else {
+          const shotPrompt = `${prompt}${c.desc ? ', ' + c.desc.slice(0, 120) : ''}. Smooth cinematic camera motion, gentle natural movement`;
+          const t = await submitFal(FAL_MODELS.i2v, { prompt: shotPrompt, image_url: c.url, duration: '5' }, 'video');
+          t.pipeline = 'video';
+          tasks.push(t);
+        }
       }
     } else {
       for (let i = 0; i < n; i++) {
-        if (inputImageUrl) tasks.push(await submitFal(FAL_MODELS.seedance, { prompt: prompt + scriptLine, image_url: inputImageUrl, aspect_ratio: seedanceRatio, duration: '5', resolution: '720p', generate_audio: true }, 'video'));
+        if (inputImageUrl) { const t = await submitFal(FAL_MODELS.i2v, { prompt: prompt + scriptLine, image_url: inputImageUrl, duration: '5' }, 'video'); t.pipeline = 'video'; tasks.push(t); }
         else tasks.push(await submitFal(FAL_MODELS.t2v, { prompt: prompt + scriptLine }, 'video'));
       }
     }
@@ -190,9 +200,28 @@ export async function pollJob(jobId: string): Promise<GenState> {
 
   for (const t of tasks) {
     if (t.done || t.failed) continue;
+
+    // ── สเต็ป TTS ของไปป์ไลน์พรีเซนเตอร์พูด: เสียงไทยเสร็จ → เริ่มทำปากขยับ (VEED Fabric) ──
+    if (t.pipeline === 'lipsync' && t.stage === 'tts') {
+      const ares = await checkFal(t); // kind 'audio'
+      if (ares.state === 'pending') continue;
+      if (ares.state === 'failed') { t.failed = true; t.errorMsg = ares.error; jobError = ares.error || 'ทำเสียงไทยไม่สำเร็จ'; changed = true; continue; }
+      try {
+        const veed = await submitFal(FAL_MODELS.fabric, { image_url: t.imageUrl, audio_url: ares.url, resolution: '720p' }, 'video');
+        t.audioUrl = ares.url;
+        t.model = veed.model; t.request_id = veed.request_id; t.status_url = veed.status_url; t.response_url = veed.response_url;
+        t.stage = 'lipsync'; t.kind = 'video';
+        changed = true;
+      } catch (e) {
+        t.failed = true; t.errorMsg = String((e as Error).message); jobError = t.errorMsg; changed = true;
+      }
+      continue;
+    }
+
+    // ── สเต็ปวิดีโอ (Kling / ผลลัพธ์ปากขยับ) — เสร็จแล้วดาวน์โหลดเก็บ ──
     const res = await checkFal(t);
     if (res.state === 'pending') continue;
-    if (res.state === 'failed') { t.failed = true; jobError = res.error || 'สร้างไม่สำเร็จ'; changed = true; continue; }
+    if (res.state === 'failed') { t.failed = true; t.errorMsg = res.error; jobError = res.error || 'สร้างไม่สำเร็จ'; changed = true; continue; }
     try {
       const fileRes = await fetch(res.url!, { cache: 'no-store' });
       const blob = await fileRes.blob();
@@ -228,6 +257,7 @@ export async function pollJob(jobId: string): Promise<GenState> {
         await supabase.from('jobs').update({
           status: 'running',
           output_urls: { ...(job.output_urls ?? {}), tasks, composeTask: newCompose },
+          ...(jobError ? { settings: { ...job.settings, error: jobError } } : {}),
         }).eq('id', jobId);
         return { status: 'running', total, done: doneCount, results: await signResults(supabase, tasks, null) };
       } catch (e) {

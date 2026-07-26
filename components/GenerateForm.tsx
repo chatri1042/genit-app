@@ -103,7 +103,6 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
   const [avEth, setAvEth] = useState('ไทย');
 
   const [brandId, setBrandId] = useState('');
-  const [useBrandImgs, setUseBrandImgs] = useState(true);
   const [brandAssets, setBrandAssets] = useState<Asset[]>([]);
   const [pickedAssets, setPickedAssets] = useState<string[]>([]);
   const [brandDesc, setBrandDesc] = useState('');
@@ -144,7 +143,7 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
   const firstPreview = (hasPresenter && presenterMode === 'upload' && presenterImg?.preview)
     || images[0]?.preview
     || placeImgs[0]?.preview
-    || (useBrandImgs && pickedAssets.length ? brandAssets.find((a) => a.path === pickedAssets[0])?.url : '') || '';
+    || (pickedAssets.length ? brandAssets.find((a) => a.path === pickedAssets[0])?.url : '') || '';
 
   function pickPlatform(id: string) {
     setRatio(id); const p = PLATFORMS.find((x) => x.id === id); if (p) setDuration(p.dur);
@@ -241,7 +240,7 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
     return { name: String(fd?.get('bfName') ?? ''), point: String(fd?.get('bfPoint') ?? ''), brand_description: brandDesc };
   }
 
-  const allImages = [...images.map((i) => i.path), ...(useBrandImgs ? pickedAssets : [])];
+  const allImages = [...images.map((i) => i.path), ...pickedAssets];
   const extra = JSON.stringify({
     mood, image_text: { main: imgMain, sub: imgSub }, thumbnail, thumb_count: thumbCount, logo, logo_image: logoImg?.path ?? null,
     voice_detail: voiceMode === 'ai' ? { gender: vGender, age: vAge, tone: vTone, voice: vPick, signature: vSignature } : {},
@@ -284,24 +283,6 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
             {brandId && brandDesc && (
               <div style={{ marginTop: 8, background: 'var(--yellow-soft)', border: '1px solid var(--yellow-deep)', borderRadius: 10, padding: '10px 14px', fontSize: 13.5 }}>
                 <b>{T('รายละเอียดแบรนด์ (ใส่ในบทให้อัตโนมัติ):', 'Brand info (auto-added to script):')}</b> {brandDesc}
-              </div>
-            )}
-            {brandId && brandAssets.length > 0 && (
-              <div style={{ marginTop: 12 }}>
-                <label className="row" style={{ cursor: 'pointer', gap: 8 }}>
-                  <input type="checkbox" checked={useBrandImgs} onChange={(e) => setUseBrandImgs(e.target.checked)} />
-                  <span style={{ fontSize: 14 }}>{T('ใช้รูปที่บันทึกไว้ในแบรนด์นี้', 'Use this brand\'s saved images')}</span>
-                </label>
-                {useBrandImgs && (
-                  <div className="asset-pick">
-                    {brandAssets.map((a) => (
-                      <label key={a.path}>
-                        <input type="checkbox" checked={pickedAssets.includes(a.path)} onChange={(e) => setPickedAssets((p) => e.target.checked ? [...p, a.path] : p.filter((x) => x !== a.path))} />
-                        <img src={a.url} alt="" />
-                      </label>
-                    ))}
-                  </div>
-                )}
               </div>
             )}
           </>
@@ -380,16 +361,42 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
         {/* สินค้า — โผล่เมื่อเลือก */}
         {hasProduct && (
           <>
-            <label className="field" style={{ marginTop: 10 }}><span>{T('รูปสินค้า (กดช่อง + ด้านล่าง · ใส่กี่รูปก็ได้)', 'Product photos (tap + · any number)')}</span></label>
+            <label className="field" style={{ marginTop: 10 }}><span>{T('รูปสินค้า (เลือกจากคลังแบรนด์ หรือกด + เพื่ออัพใหม่)', 'Product photos (pick from brand library or tap + to upload)')}</span></label>
             <div className="uploads">
+              {/* รูปแบรนด์ที่เลือก — โผล่ในช่องสินค้าเลย ลบได้ */}
+              {brandAssets.filter((a) => pickedAssets.includes(a.path)).map((a) => (
+                <div key={a.path} style={{ position: 'relative' }}>
+                  <img className="up-thumb" src={a.url} alt="" />
+                  <button type="button" title={T('เอาออก', 'Remove')} onClick={() => setPickedAssets((p) => p.filter((x) => x !== a.path))} style={{ position: 'absolute', top: -6, right: -6, background: '#1A1A17', color: '#fff', border: 'none', borderRadius: '50%', width: 22, height: 22, cursor: 'pointer' }}>×</button>
+                </div>
+              ))}
+              {/* รูปที่อัพเอง */}
               {images.map((im, i) => (
                 <div key={i} style={{ position: 'relative' }}>
                   <img className="up-thumb" src={im.preview} alt="" />
-                  <button type="button" onClick={() => setImages(images.filter((_, j) => j !== i))} style={{ position: 'absolute', top: -6, right: -6, background: '#1A1A17', color: '#fff', border: 'none', borderRadius: '50%', width: 22, height: 22, cursor: 'pointer' }}>×</button>
+                  <button type="button" title={T('เอาออก', 'Remove')} onClick={() => setImages(images.filter((_, j) => j !== i))} style={{ position: 'absolute', top: -6, right: -6, background: '#1A1A17', color: '#fff', border: 'none', borderRadius: '50%', width: 22, height: 22, cursor: 'pointer' }}>×</button>
                 </div>
               ))}
               <label className="up-add">{uploading ? '…' : '+'}<input type="file" accept="image/*" multiple hidden onChange={onPick} /></label>
             </div>
+            {/* คลังรูปแบรนด์ — กดเพื่อเพิ่ม/เอาออกจากช่องสินค้า */}
+            {brandId && brandAssets.length > 0 && (
+              <div style={{ marginTop: 10 }}>
+                <div className="muted" style={{ fontSize: 13, marginBottom: 6 }}>{T('คลังรูปในแบรนด์นี้ — กดรูปเพื่อเพิ่มเป็นรูปสินค้า', 'Brand library — tap an image to add it as a product photo')}</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {brandAssets.map((a) => {
+                    const picked = pickedAssets.includes(a.path);
+                    return (
+                      <button type="button" key={a.path} onClick={() => setPickedAssets((p) => picked ? p.filter((x) => x !== a.path) : [...p, a.path])}
+                        style={{ position: 'relative', padding: 0, border: picked ? '2.5px solid var(--yellow-deep)' : '2.5px solid transparent', borderRadius: 10, cursor: 'pointer', background: 'none', opacity: picked ? 1 : 0.6, lineHeight: 0 }}>
+                        <img src={a.url} alt="" style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 8, display: 'block' }} />
+                        {picked && <span style={{ position: 'absolute', top: 2, right: 2, background: 'var(--yellow-deep)', color: '#3A2E00', borderRadius: '50%', width: 18, height: 18, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>✓</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </>
         )}
 
@@ -590,7 +597,7 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
             duration={duration}
             subjects={{ presenter: hasPresenter, product: hasProduct, place: hasPlace }}
             briefFor={briefFor}
-            productPath={images[0]?.path ?? (useBrandImgs ? pickedAssets[0] : '') ?? null}
+            productPath={images[0]?.path ?? pickedAssets[0] ?? null}
             presenterPath={presenterMode === 'upload' ? (presenterImg?.path ?? null) : null}
             avatar={hasPresenter && presenterMode === 'ai' ? { gender: avGender, age: avAge, ethnicity: avEth } : null}
           />

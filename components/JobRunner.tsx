@@ -80,6 +80,12 @@ export default function JobRunner({ jobId, initialStatus, isImage }: { jobId: st
         </div>
       )}
 
+      {state.status === 'done' && state.error && (
+        <div style={{ background: '#FFF4E5', border: '1px solid #F0C36D', borderRadius: 10, padding: '10px 14px', marginBottom: 12, fontSize: 13.5 }}>
+          ⚠️ {T('บางช็อตสร้างไม่สำเร็จ', 'Some shots failed')}: <span className="muted">{state.error}</span>
+        </div>
+      )}
+
       {state.results && state.results.length > 0 && (
         <>
           <div style={{ fontWeight: 600, marginBottom: 12 }}>

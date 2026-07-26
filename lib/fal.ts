@@ -10,17 +10,21 @@ export const FAL_MODELS = {
   // Nano Banana (Gemini 2.5 Flash Image) — คงสินค้า/ตัวละครเป๊ะ + วางในฉากใหม่ได้
   nano: process.env.FAL_MODEL_NANO || 'fal-ai/nano-banana',
   nanoEdit: process.env.FAL_MODEL_NANO_EDIT || 'fal-ai/nano-banana/edit',
-  i2v: process.env.FAL_MODEL_I2V || 'fal-ai/kling-video/v1/standard/image-to-video',
-  // Seedance 2.0 image-to-video — มี aspect_ratio 9:16 ตรงๆ + เจนเสียง/พูดขยับปากในตัว
+  i2v: process.env.FAL_MODEL_I2V || 'fal-ai/kling-video/v1/standard/image-to-video', // ขยับภาพสินค้า/สถานที่ (ไม่บล็อกหน้า)
+  // Seedance 2.0 image-to-video — สวย+เสียงในตัว แต่บล็อกรูปหน้าคนเหมือนจริง (ใช้กับช็อตไม่มีคนเท่านั้น)
   seedance: process.env.FAL_MODEL_SEEDANCE || 'bytedance/seedance-2.0/image-to-video',
   t2v: process.env.FAL_MODEL_T2V || 'fal-ai/ltx-video',
+  // เสียงพากย์ไทยจากสคริปต์ (MiniMax รองรับไทย)
+  tts: process.env.FAL_MODEL_TTS || 'fal-ai/minimax/speech-02-hd',
+  // ทำปากขยับตามไฟล์เสียง — รับรูปหน้าคน + เสียง (ไม่บล็อกหน้า เพราะเป็นงานหลักของมัน)
+  fabric: process.env.FAL_MODEL_FABRIC || 'veed/fabric-1.0',
   lipsync: process.env.FAL_MODEL_LIPSYNC || 'fal-ai/sync-lipsync',
   // ต่อคลิปหลายช็อตเป็นวิดีโอเดียว (endpoint เฉพาะทางของ fal — รับลิสต์คลิป + บังคับความละเอียดได้)
   merge: process.env.FAL_MODEL_MERGE || 'fal-ai/ffmpeg-api/merge-videos',
 };
 
 export type FalTask = {
-  kind: 'image' | 'video';
+  kind: 'image' | 'video' | 'audio';
   model: string;
   request_id: string;
   status_url: string;
@@ -28,6 +32,12 @@ export type FalTask = {
   done: boolean;
   failed?: boolean;
   result_path?: string | null; // path ใน Supabase 'outputs' หลังดาวน์โหลดเก็บแล้ว
+  // ---- ไปป์ไลน์พรีเซนเตอร์พูด (หลายสเต็ปในหนึ่ง task) ----
+  pipeline?: 'video' | 'lipsync'; // 'lipsync' = ทำเสียงไทย → ทำปากขยับ
+  stage?: 'tts' | 'lipsync';      // สเต็ปปัจจุบันของ pipeline lipsync
+  imageUrl?: string;              // รูปเฟรม (ป้อนเข้าตัวทำปากขยับ)
+  audioUrl?: string;              // ไฟล์เสียงไทยที่ได้จาก TTS
+  errorMsg?: string;              // ข้อความ error จริงจาก fal (ไว้โชว์ให้ผู้ใช้เห็น)
 };
 
 function authHeaders(): Record<string, string> {
@@ -37,7 +47,7 @@ function authHeaders(): Record<string, string> {
 }
 
 // ส่งงานเข้า fal queue — คืน request info ไว้ poll ทีหลัง
-export async function submitFal(model: string, input: Record<string, any>, kind: 'image' | 'video'): Promise<FalTask> {
+export async function submitFal(model: string, input: Record<string, any>, kind: 'image' | 'video' | 'audio'): Promise<FalTask> {
   const res = await fetch(`${QUEUE}/${model}`, {
     method: 'POST',
     headers: authHeaders(),
@@ -62,13 +72,13 @@ export async function submitFal(model: string, input: Record<string, any>, kind:
   };
 }
 
-// เช็คสถานะงานหนึ่งชิ้น — คืน 'pending' | 'done'(+url) | 'failed'(+error)
+// เช็คสถานะงานหนึ่งชิ้น — คืน 'pending' | 'done'(+url) | 'failed'(+error จริงจาก fal)
 export async function checkFal(task: FalTask): Promise<{ state: 'pending' | 'done' | 'failed'; url?: string; error?: string }> {
   const sres = await fetch(task.status_url, { headers: authHeaders(), cache: 'no-store' });
   if (!sres.ok) return { state: 'pending' }; // ชั่วคราว — ลองใหม่รอบหน้า
   const s = await sres.json();
   const status = String(s?.status ?? '').toUpperCase();
-  if (status === 'FAILED' || status === 'ERROR') return { state: 'failed', error: 'fal.ai สร้างไม่สำเร็จ' };
+  if (status === 'FAILED' || status === 'ERROR') return { state: 'failed', error: await falErrorDetail(task, s) };
   if (status !== 'COMPLETED') return { state: 'pending' };
 
   // เสร็จแล้ว — ดึงผลลัพธ์
@@ -80,11 +90,29 @@ export async function checkFal(task: FalTask): Promise<{ state: 'pending' | 'don
   return { state: 'done', url };
 }
 
+// ดึงข้อความ error จริงจาก fal (เผื่อโดนบล็อก/พารามิเตอร์ผิด จะได้รู้สาเหตุ ไม่ใช่ "ไม่สำเร็จ" ลอยๆ)
+async function falErrorDetail(task: FalTask, statusPayload: any): Promise<string> {
+  let detail = statusPayload?.error || statusPayload?.detail || '';
+  try {
+    const rres = await fetch(task.response_url, { headers: authHeaders(), cache: 'no-store' });
+    const body = await rres.text();
+    try {
+      const j = JSON.parse(body);
+      detail = j?.error || j?.detail || j?.message || (Array.isArray(j?.detail) ? j.detail.map((d: any) => d?.msg).filter(Boolean).join('; ') : '') || detail;
+    } catch { detail = detail || body.slice(0, 180); }
+  } catch { /* ignore */ }
+  const s = typeof detail === 'string' ? detail : JSON.stringify(detail);
+  return s ? `fal.ai: ${s.slice(0, 200)}` : 'fal.ai สร้างไม่สำเร็จ';
+}
+
 // หา URL ไฟล์จากผลลัพธ์ fal (รูปแบบต่างกันตามโมเดล)
-function extractUrl(out: any, kind: 'image' | 'video'): string | null {
+function extractUrl(out: any, kind: 'image' | 'video' | 'audio'): string | null {
   if (!out) return null;
   if (kind === 'video') {
     return out?.video?.url || out?.video_url || out?.videos?.[0]?.url || out?.output?.url || (typeof out?.output === 'string' ? out.output : null) || null;
+  }
+  if (kind === 'audio') {
+    return out?.audio?.url || out?.audio_url || out?.audio?.[0]?.url || out?.output?.url || out?.url || null;
   }
   return out?.images?.[0]?.url || out?.image?.url || out?.images?.[0] || out?.output?.[0] || out?.url || null;
 }
