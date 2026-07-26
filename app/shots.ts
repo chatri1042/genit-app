@@ -7,6 +7,15 @@ import { submitFal, checkFal, FAL_MODELS, ratioToImageSize, type FalTask } from 
 
 const SHOT_IMG_COST = 3; // เครดิตต่อภาพตัวอย่าง 1 ช็อต
 
+// สัดส่วนจอ → ค่า aspect_ratio ที่ Nano Banana (Gemini 2.5 Flash Image) รับ
+function ratioToAspect(ratio: string): string {
+  if (ratio === '9:16') return '9:16';
+  if (ratio === '16:9') return '16:9';
+  if (ratio === '4:5') return '4:5';
+  if (ratio === '1:1') return '1:1';
+  return ratio && /^\d+:\d+$/.test(ratio) ? ratio : '1:1';
+}
+
 const MOOD_EN: Record<string, string> = {
   'สนุก ตื่นเต้น': 'fun, energetic, vibrant tone', 'น่าเชื่อถือ': 'clean, trustworthy, premium tone',
   'เป็นกันเอง': 'friendly, warm, casual tone', 'หรูหรา': 'luxury, elegant, high-end tone', 'ตลก': 'playful, quirky tone',
@@ -139,7 +148,9 @@ export async function startShotImage(input: ShotInput): Promise<{ task?: FalTask
 
   const useEdit = refs.length > 0;
   const model = useEdit ? FAL_MODELS.nanoEdit : FAL_MODELS.nano;
-  const body: Record<string, any> = { prompt, num_images: 1 };
+  const asp = ratioToAspect(input.ratio);
+  // บังคับสัดส่วนภาพให้ตรงกับที่เลือก (ไม่งั้น Nano Banana จะออกมา 1:1 เสมอ)
+  const body: Record<string, any> = { prompt: `${prompt} Output image aspect ratio ${asp}.`, num_images: 1, aspect_ratio: asp };
   if (useEdit) body.image_urls = refs;
 
   try {

@@ -75,10 +75,8 @@ export async function startGeneration(jobId: string): Promise<GenState> {
     inputImageUrl = signed?.signedUrl ?? '';
   }
 
-  // สัดส่วนที่ kling รับ (16:9 / 9:16 / 1:1)
-  const klingRatio = job.ratio === '9:16' ? '9:16' : job.ratio === '1:1' ? '1:1' : '16:9';
-
   // ภาพจากสตอรีบอร์ด (แต่ละช็อตมี imgPath ใน bucket 'outputs') — ถ้าไม่มีก็ใช้รูปสินค้าแทน
+  // kling image-to-video ยึดสัดส่วนตาม "รูปต้นทาง" — ภาพช็อตเป็นแนวตั้งอยู่แล้ว คลิปจะออกมาแนวตั้งเอง
   const shotList: any[] = Array.isArray(job.shots) ? job.shots : [];
   const shotImages: string[] = [];
   for (const s of shotList) {
@@ -102,11 +100,11 @@ export async function startGeneration(jobId: string): Promise<GenState> {
         const line = job.script ? ` ${String(job.script).slice(0, 180)}` : '';
         const shotDesc = shotList[i]?.desc || shotList[i]?.name || '';
         const shotPrompt = `${prompt}${shotDesc ? ', ' + String(shotDesc).slice(0, 120) : ''}${line}`;
-        tasks.push(await submitFal(FAL_MODELS.i2v, { prompt: shotPrompt, image_url: shotImages[i], aspect_ratio: klingRatio, duration: '5' }, 'video'));
+        tasks.push(await submitFal(FAL_MODELS.i2v, { prompt: shotPrompt, image_url: shotImages[i], duration: '5' }, 'video'));
       }
     } else {
       for (let i = 0; i < n; i++) {
-        if (inputImageUrl) tasks.push(await submitFal(FAL_MODELS.i2v, { prompt: prompt + scriptLine, image_url: inputImageUrl, aspect_ratio: klingRatio, duration: '5' }, 'video'));
+        if (inputImageUrl) tasks.push(await submitFal(FAL_MODELS.i2v, { prompt: prompt + scriptLine, image_url: inputImageUrl, duration: '5' }, 'video'));
         else tasks.push(await submitFal(FAL_MODELS.t2v, { prompt: prompt + scriptLine }, 'video'));
       }
     }
