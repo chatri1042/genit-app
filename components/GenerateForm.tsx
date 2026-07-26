@@ -65,8 +65,7 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
   const [duration, setDuration] = useState(20);
   const [count, setCount] = useState(2);
   const [mood, setMood] = useState(MOODS[0]);
-  const [concept, setConcept] = useState('sale');
-  const [conceptText, setConceptText] = useState('');
+  const [concept, setConcept] = useState('');
   const [scriptLang, setScriptLang] = useState<L>('th');
   const [script, setScript] = useState('');
   const [drafts, setDrafts] = useState<{ hook: string; text: string }[]>([]);
@@ -220,7 +219,7 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
       fd.get('bfPoint') && `จุดขาย: ${fd.get('bfPoint')}`,
       brandDesc && `แบรนด์: ${brandDesc}`,
     ].filter(Boolean).join('\n');
-    const conceptLabel = concept === 'other' ? conceptText : (CONCEPTS.find((c) => c.id === concept)?.th ?? '');
+    const conceptLabel = CONCEPTS.find((c) => c.id === concept)?.th ?? '';
     const res = await aiDraftScripts({ productInfo: brief, concept: conceptLabel, tone: mood, lang: scriptLang, count: 3 });
     setDrafting(false);
     if (res.error) { setDraftErr(res.error); return; }
@@ -246,7 +245,7 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
     <form ref={formRef} action={createJobDraft} className="gen-wrap">
       <input type="hidden" name="format" value={output === 'image' ? 'image' : 'video'} />
       <input type="hidden" name="ratio" value={ratio} />
-      <input type="hidden" name="concept" value={concept === 'other' ? conceptText : concept} />
+      <input type="hidden" name="concept" value={concept} />
       <input type="hidden" name="script_lang" value={scriptLang} />
       <input type="hidden" name="script" value={script} />
       <input type="hidden" name="voice_mode" value={voiceMode} />
@@ -405,10 +404,11 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
 
         {/* platform / ratio */}
         <div className="mini-label">{T('ลงที่ไหน (ตั้งสัดส่วน+ความยาวให้)', 'Post where (sets size + length)')}</div>
-        <div className="chips">
+        <div className="plat-grid">
           {PLATFORMS.map((p) => (
-            <button type="button" key={p.id} className={'chip' + (ratio === p.id ? ' active' : '')} onClick={() => pickPlatform(p.id)}>
-              {T(p.th, p.en)} · {p.id}
+            <button type="button" key={p.id} className={'plat' + (ratio === p.id ? ' active' : '')} onClick={() => pickPlatform(p.id)}>
+              <span className="plat-top">{T(p.th, p.en)} · {p.id}</span>
+              <span className="plat-sub">{p.sub}</span>
             </button>
           ))}
         </div>
@@ -452,19 +452,11 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
           </>
         )}
 
-        {/* concept + brief (video) */}
+        {/* brief (video) — ช่องเดียวจบ ใส่อะไรก็ได้ตามงาน */}
         {!isImage && (
           <>
-            <label className="field"><span>{T('คอนเซ็ปต์', 'Concept')}</span>
-              <select value={concept} onChange={(e) => setConcept(e.target.value)}>
-                {CONCEPTS.map((c) => <option key={c.id} value={c.id}>{T(c.th, c.en)}</option>)}
-              </select>
-            </label>
-            {concept === 'other' && <input type="text" value={conceptText} onChange={(e) => setConceptText(e.target.value)} placeholder={T('พิมพ์คอนเซ็ปต์เอง', 'Type your own concept')} style={{ marginTop: 8 }} />}
-
-            <label className="field"><span>{T('ชื่อสินค้า', 'Product name')}</span><input type="text" name="bfName" placeholder={T('เช่น เซรั่มหน้าใส Glow', 'e.g. Glow brightening serum')} /></label>
-            <label className="field"><span>{T('ราคา', 'Price')}</span><input type="text" name="bfPrice" placeholder={T('เช่น 199 บาท', 'e.g. 199 THB')} /></label>
-            <label className="field"><span>{T('จุดขาย / อยากบอกอะไร (มีโปรถึงวันไหนใส่ตรงนี้ได้)', 'Key selling point (add promo dates here)')}</span><textarea name="bfPoint" rows={2} placeholder={T('เช่น ใช้ 2 สัปดาห์หน้าใสขึ้น · ลดถึง 30 มิ.ย.', 'e.g. brighter in 2 weeks · sale until Jun 30')} /></label>
+            <label className="field"><span>{T('รายละเอียด / บรีฟ (อยากบอกอะไรบ้าง)', 'Details / brief (anything to say)')}</span>
+              <textarea name="bfPoint" rows={3} placeholder={T('เช่น เซรั่มหน้าใส Glow 199 บาท · ใช้ 2 สัปดาห์หน้าใสขึ้น · ลดถึง 30 มิ.ย. / หรือ รีสอร์ทริมทะเล ห้องพักเริ่ม 1,500 · มีสระว่ายน้ำ', 'e.g. Glow serum 199 THB · brighter in 2 weeks · sale until Jun 30 / or beachfront resort, rooms from 1,500, pool')} /></label>
 
             <div className="mini-label">{T('ภาษาของบทพูด', 'Script language')}</div>
             <div className="seg">

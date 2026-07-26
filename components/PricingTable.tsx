@@ -42,7 +42,7 @@ export default function PricingTable({ packs }: { packs: Pack[] }) {
             <ul style={{ paddingLeft: 18, marginTop: 12, fontSize: 14, lineHeight: 1.9 }}>
               {(FEATS[p.id] ?? []).map((f, i) => <li key={i}>{lang === 'th' ? f.th : f.en}</li>)}
             </ul>
-            <button className="btn" style={{ width: '100%', justifyContent: 'center', marginTop: 8 }}>{T('เลือกแพ็กนี้', 'Choose this pack')}</button>
+            <button className="btn" style={{ width: '100%', justifyContent: 'center' }}>{T('เลือกแพ็กนี้', 'Choose this pack')}</button>
           </div>
         ))}
       </div>
