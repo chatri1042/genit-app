@@ -43,12 +43,19 @@ async function listModels(key: string): Promise<{ models?: string[]; error?: str
   }
 }
 
-function buildPrompt(input: { productInfo: string; concept: string; tone: string; lang: 'th' | 'en'; count: number }) {
+function genderRule(g?: string): string {
+  const s = String(g || '');
+  if (/ชาย|male|man/i.test(s)) return `ผู้พูดเป็นผู้ชาย — ใช้สรรพนาม/คำลงท้ายแบบผู้ชาย (เช่น "ครับ", "ผม") ห้ามใช้ "ค่ะ/คะ/ดิฉัน"\n`;
+  if (/หญิง|female|woman/i.test(s)) return `ผู้พูดเป็นผู้หญิง — ใช้สรรพนาม/คำลงท้ายแบบผู้หญิง (เช่น "ค่ะ/คะ", "เรา/ดิฉัน") ห้ามใช้ "ครับ/ผม"\n`;
+  return '';
+}
+function buildPrompt(input: { productInfo: string; concept: string; tone: string; lang: 'th' | 'en'; count: number; presenterGender?: string }) {
   const langName = input.lang === 'en' ? 'English' : 'ภาษาไทย';
   return (
     `คุณเป็นครีเอทีฟเขียนบทวิดีโอโปรโมทสินค้าสั้น (UGC/โฆษณา) สำหรับร้านค้าออนไลน์ไทย\n` +
     `เขียนบทพูด ${input.count} แบบ ที่ "hook 3 วินาทีแรก" ต่างกันชัดเจน\n` +
     `ภาษา: ${langName} | คอนเซ็ปต์: ${input.concept || 'อิสระ'} | โทน: ${input.tone || 'เป็นกันเอง'}\n` +
+    genderRule(input.presenterGender) +
     `ข้อมูลสินค้า/โปรโมชัน:\n${input.productInfo}\n\n` +
     `เงื่อนไข: แต่ละบทยาวประมาณ 15-25 วินาทีเมื่อพูด พูดลื่นเป็นธรรมชาติ มี call-to-action ตอนจบ\n` +
     `ตอบเป็น JSON array เท่านั้น: [{"hook":"ชื่อสั้นของ hook","text":"บทเต็ม"}]`
@@ -96,7 +103,7 @@ async function tryModel(key: string, model: string, prompt: string, count: numbe
 }
 
 export async function aiDraftScripts(input: {
-  productInfo: string; concept: string; tone: string; lang: 'th' | 'en'; count?: number;
+  productInfo: string; concept: string; tone: string; lang: 'th' | 'en'; count?: number; presenterGender?: string;
 }): Promise<DraftResult> {
   const key = process.env.GOOGLE_AI_API_KEY;
   if (!key) return { error: 'ยังไม่ได้ตั้งค่าคีย์ AI (GOOGLE_AI_API_KEY) ใน Netlify' };

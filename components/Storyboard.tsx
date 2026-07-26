@@ -15,12 +15,13 @@ function newId() {
 function recommend(dur: number) { return Math.min(8, Math.max(3, Math.round(dur / 4))); }
 
 export default function Storyboard({
-  shots, setShots, ratio, mood, duration, subjects, briefFor, productPath, presenterPath,
+  shots, setShots, ratio, mood, duration, subjects, briefFor, productPath, presenterPath, avatar,
 }: {
   shots: Shot[]; setShots: (s: Shot[]) => void;
   ratio: string; mood: string; duration: number; subjects: Subjects;
   briefFor: () => { point?: string; brand_description?: string };
   productPath?: string | null; presenterPath?: string | null;
+  avatar?: { gender?: string; age?: string; ethnicity?: string } | null;
 }) {
   const { lang } = useLang();
   const T = (th: string, en: string) => (lang === 'th' ? th : en);
@@ -75,6 +76,7 @@ export default function Storyboard({
       brief: briefFor(),
       productPath: productPath ?? null,
       presenterPath: presenterPath ?? null,
+      avatar: avatar ?? null,
     };
     const r = await startShotImage(input);
     if (!alive.current) return;

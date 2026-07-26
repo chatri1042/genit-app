@@ -56,6 +56,7 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
   const tv = (s: string) => (lang === 'en' ? (VAL_EN[s] ?? s) : s); // แปลค่าตัวเลือกตามภาษา
 
   const [output, setOutput] = useState<'video' | 'image'>('video');
+  const [activePreset, setActivePreset] = useState('');
   const [hasPresenter, setHasPresenter] = useState(true);
   const [hasProduct, setHasProduct] = useState(true);
   const [hasPlace, setHasPlace] = useState(false);
@@ -189,6 +190,7 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
     setHasPresenter(p.pres); setHasProduct(p.prod);
     setHasPlace((prev) => p.place || prev); // พรีเซ็ตเพิ่มสถานที่ได้ แต่ไม่ปลดที่ผู้ใช้ติ๊กไว้เอง
     setMood(p.mood); setConcept(p.concept); setShots([]);
+    setActivePreset(p.id); // ไฮไลต์พรีเซ็ตที่เลือก
   }
   async function onVoiceFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]; if (!file) return;
@@ -226,7 +228,9 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
       brandDesc && `แบรนด์: ${brandDesc}`,
     ].filter(Boolean).join('\n');
     const conceptLabel = CONCEPTS.find((c) => c.id === concept)?.th ?? '';
-    const res = await aiDraftScripts({ productInfo: brief, concept: conceptLabel, tone: mood, lang: scriptLang, count: 3 });
+    // เพศผู้พูด: โหมด AI ใช้เพศ avatar, โหมดอัพรูปใช้ค่าที่เลือก (อัตโนมัติ = ไม่บังคับ)
+    const gender = hasPresenter ? (presenterMode === 'ai' ? avGender : (presenterGender.includes('อัตโนมัติ') ? '' : presenterGender)) : '';
+    const res = await aiDraftScripts({ productInfo: brief, concept: conceptLabel, tone: mood, lang: scriptLang, count: 3, presenterGender: gender });
     setDrafting(false);
     if (res.error) { setDraftErr(res.error); return; }
     setDrafts(res.scripts ?? []);
@@ -307,7 +311,7 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
         <span className="muted" style={{ fontSize: 14 }}>{T('อยากได้ผลลัพธ์แบบไหน', 'What do you want')}</span>
         <div className="seg" style={{ marginTop: 8 }}>
           {[['video', T('🎬 วิดีโอ', '🎬 Video')], ['image', T('🖼️ รูปภาพ', '🖼️ Images')]].map(([v, t]) => (
-            <button type="button" key={v} className={output === v ? 'active' : ''} onClick={() => { setOutput(v as 'video' | 'image'); setShots([]); }}>{t}</button>
+            <button type="button" key={v} className={output === v ? 'active' : ''} onClick={() => { setOutput(v as 'video' | 'image'); setShots([]); setActivePreset(''); }}>{t}</button>
           ))}
         </div>
 
@@ -315,16 +319,16 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
         <div className="mini-label">{T('เริ่มเร็ว (ไม่บังคับ · กดแล้วปรับต่อได้)', 'Quick start (optional)')}</div>
         <div className="chips preset-row">
           {PRESETS.map((p) => (
-            <button type="button" key={p.id} className="chip preset" onClick={() => applyPreset(p)}>{T(p.th, p.en)}</button>
+            <button type="button" key={p.id} className={'chip preset' + (activePreset === p.id ? ' active' : '')} onClick={() => applyPreset(p)}>{activePreset === p.id ? '✓ ' : ''}{T(p.th, p.en)}</button>
           ))}
         </div>
 
         {/* องค์ประกอบในคลิป — เลือกได้หลายอย่าง ไม่ต้องครบ */}
         <div className="mini-label">{output === 'image' ? T('ในภาพมีอะไรบ้าง (เลือกได้หลายอย่าง)', 'What\'s in the image (pick any)') : T('ในวิดีโอมีอะไรบ้าง (เลือกได้หลายอย่าง)', 'What\'s in the video (pick any)')}</div>
         <div className="chips">
-          <button type="button" className={'chip' + (hasPresenter ? ' active' : '')} onClick={() => { setHasPresenter(!hasPresenter); setShots([]); }}>{hasPresenter ? '✓ ' : ''}{T('พรีเซนเตอร์ (คน)', 'Presenter')}</button>
-          <button type="button" className={'chip' + (hasProduct ? ' active' : '')} onClick={() => { setHasProduct(!hasProduct); setShots([]); }}>{hasProduct ? '✓ ' : ''}{T('สินค้า', 'Product')}</button>
-          <button type="button" className={'chip' + (hasPlace ? ' active' : '')} onClick={() => { setHasPlace(!hasPlace); setShots([]); }}>{hasPlace ? '✓ ' : ''}{T('สถานที่ / บรรยากาศ', 'Place / scene')}</button>
+          <button type="button" className={'chip' + (hasPresenter ? ' active' : '')} onClick={() => { setHasPresenter(!hasPresenter); setShots([]); setActivePreset(''); }}>{hasPresenter ? '✓ ' : ''}{T('พรีเซนเตอร์ (คน)', 'Presenter')}</button>
+          <button type="button" className={'chip' + (hasProduct ? ' active' : '')} onClick={() => { setHasProduct(!hasProduct); setShots([]); setActivePreset(''); }}>{hasProduct ? '✓ ' : ''}{T('สินค้า', 'Product')}</button>
+          <button type="button" className={'chip' + (hasPlace ? ' active' : '')} onClick={() => { setHasPlace(!hasPlace); setShots([]); setActivePreset(''); }}>{hasPlace ? '✓ ' : ''}{T('สถานที่ / บรรยากาศ', 'Place / scene')}</button>
         </div>
         {!hasPresenter && !hasProduct && !hasPlace && (
           <div className="muted" style={{ fontSize: 13, marginTop: 8 }}>{T('เลือกอย่างน้อย 1 อย่าง หรือปล่อยว่างให้ AI คิดจากบรีฟก็ได้', 'Pick at least one, or leave empty and let AI decide from the brief')}</div>
@@ -588,6 +592,7 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
             briefFor={briefFor}
             productPath={images[0]?.path ?? (useBrandImgs ? pickedAssets[0] : '') ?? null}
             presenterPath={presenterMode === 'upload' ? (presenterImg?.path ?? null) : null}
+            avatar={hasPresenter && presenterMode === 'ai' ? { gender: avGender, age: avAge, ethnicity: avEth } : null}
           />
         )}
 

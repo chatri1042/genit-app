@@ -12,32 +12,49 @@ const MOOD_EN: Record<string, string> = {
   'เป็นกันเอง': 'friendly, warm, casual tone', 'หรูหรา': 'luxury, elegant, high-end tone', 'ตลก': 'playful, quirky tone',
 };
 
+export type Avatar = { gender?: string; age?: string; ethnicity?: string };
 export type ShotInput = {
   shotName: string; shotDesc: string; ratio: string; mood?: string;
   brief?: { point?: string; brand_description?: string };
   productPath?: string | null;   // path ใน bucket uploads (รูปสินค้ารูปแรก)
   presenterPath?: string | null; // path รูปพรีเซนเตอร์ (ถ้าอัพเอง)
+  avatar?: Avatar | null;        // ถ้าใช้ Avatar AI (สร้างคนใหม่)
 };
 
-// แปลชื่อช็อต (ไทย ที่ระบบสร้าง) เป็นคำบรรยายฉากภาษาอังกฤษ ให้โมเดลภาพเข้าใจตรง
-function sceneEN(name: string): { scene: string; wantsPerson: boolean } {
-  const n = name || '';
-  if (/CTA|cta/i.test(n)) return { scene: 'end-card style hero shot of the product on a clean minimal background, lots of empty space for text, e-commerce look', wantsPerson: false };
-  if (/พรีเซนเตอร์|presenter/i.test(n) && /สินค้า|product|ใช้|ถือ/i.test(n)) return { scene: 'a friendly Thai presenter smiling, holding and showing the product to the camera, authentic UGC phone-camera style, casual real-life setting', wantsPerson: true };
-  if (/พรีเซนเตอร์|presenter|คน/i.test(n)) return { scene: 'a friendly Thai presenter talking to the camera, authentic UGC selfie phone-camera style, casual real-life setting', wantsPerson: true };
-  if (/สถานที่|บรรยากาศ|scene|establishing|place/i.test(n)) return { scene: 'a wide establishing shot of the location and atmosphere, no people in focus', wantsPerson: false };
-  return { scene: 'clean close-up product photography of the product, soft studio lighting, e-commerce hero shot', wantsPerson: false };
+const ETH_EN: Record<string, string> = { 'ไทย': 'Thai', 'เอเชียตะวันออก': 'East Asian', 'ลูกครึ่ง': 'mixed-race', 'ตะวันตก': 'Western/Caucasian', 'เอเชียใต้': 'South Asian', 'แอฟริกัน': 'African' };
+function personDesc(av?: Avatar | null): string {
+  const g = /ชาย|male/i.test(av?.gender || '') ? 'man' : /หญิง|female/i.test(av?.gender || '') ? 'woman' : 'person';
+  const eth = ETH_EN[av?.ethnicity || 'ไทย'] || 'Thai';
+  const age = /18|วัยรุ่น/.test(av?.age || '') ? 'young adult' : /55|สูงวัย/.test(av?.age || '') ? 'senior' : /40|กลางคน/.test(av?.age || '') ? 'middle-aged' : 'adult';
+  return `a ${age} ${eth} ${g}`;
 }
 
-function buildPrompt(input: ShotInput, hasRef: boolean): string {
-  const { scene } = sceneEN(input.shotName);
+// ชนิดของช็อต
+function shotKind(name: string): 'cta' | 'presenter_product' | 'presenter' | 'place' | 'product' {
+  const n = name || '';
+  if (/CTA|cta/i.test(n)) return 'cta';
+  if (/พรีเซนเตอร์|presenter/i.test(n) && /สินค้า|product|ใช้|ถือ/i.test(n)) return 'presenter_product';
+  if (/พรีเซนเตอร์|presenter|คน/i.test(n)) return 'presenter';
+  if (/สถานที่|บรรยากาศ|scene|establishing|place/i.test(n)) return 'place';
+  return 'product';
+}
+
+function buildPrompt(input: ShotInput, mode: 'i2i' | 't2i'): string {
+  const kind = shotKind(input.shotName);
+  const who = personDesc(input.avatar);
+  let scene = '';
+  if (kind === 'cta') scene = 'end-card style hero shot of the product on a clean minimal background, lots of empty space for text, e-commerce look';
+  else if (kind === 'presenter_product') scene = `${who}, friendly and smiling, holding and showing the product to the camera, authentic UGC phone-camera style, casual real-life setting`;
+  else if (kind === 'presenter') scene = `${who}, friendly and smiling, talking to the camera, authentic UGC selfie phone-camera style, casual real-life setting`;
+  else if (kind === 'place') scene = 'a wide establishing shot of the location and atmosphere, no people in focus';
+  else scene = 'clean close-up product photography of the product, soft studio lighting, e-commerce hero shot';
   return [
     scene,
     input.shotDesc ? `Extra: ${input.shotDesc}` : '',
     input.brief?.point ? `Product context: ${input.brief.point}` : '',
     input.brief?.brand_description ? `Brand: ${input.brief.brand_description}` : '',
     input.mood ? (MOOD_EN[input.mood] || input.mood) : '',
-    hasRef ? 'keep the exact product/subject from the reference image, do not change its shape, color or logo' : '',
+    mode === 'i2i' ? 'keep the exact product/subject from the reference image identical (same shape, color, pattern, logo)' : '',
     'commercial quality, high detail, sharp focus, realistic, no text overlay, no watermark',
   ].filter(Boolean).join('. ');
 }
@@ -56,23 +73,31 @@ export async function startShotImage(input: ShotInput): Promise<{ task?: FalTask
   const balance = await getCreditBalance(user.id);
   if (balance < SHOT_IMG_COST) return { needCredits: true, error: `เครดิตไม่พอ (ต้องมีอย่างน้อย ${SHOT_IMG_COST})` };
 
-  // เลือกรูปอ้างอิง: ช็อตคน→ใช้รูปพรีเซนเตอร์ (ถ้ามี), ช็อตสินค้า→ใช้รูปสินค้า
-  const { wantsPerson } = sceneEN(input.shotName);
+  const kind = shotKind(input.shotName);
   const [productUrl, presenterUrl] = await Promise.all([
     signUploads(supabase, input.productPath),
     signUploads(supabase, input.presenterPath),
   ]);
+  // เลือกวิธี:
+  //  - ช็อตคน + มีรูปคนจริง → i2i รูปคน
+  //  - ช็อตคน + ใช้ Avatar AI (ไม่มีรูปคน) → t2i สร้างคนใหม่ (ห้ามเอารูปสินค้ามาเป็น ref ไม่งั้นได้แต่รูปสินค้า)
+  //  - ช็อตสินค้า/สถานที่/CTA → i2i รูปสินค้า (ถ้ามี) เพื่อคงของจริง
+  const wantsPerson = kind === 'presenter' || kind === 'presenter_product';
   let refUrl = '';
-  if (wantsPerson && presenterUrl) refUrl = presenterUrl;
-  else if (!wantsPerson && productUrl) refUrl = productUrl;
-  else refUrl = productUrl || presenterUrl; // fallback รูปที่มี
+  let strength = 0.6;
+  if (wantsPerson) {
+    if (presenterUrl) { refUrl = presenterUrl; strength = 0.55; }
+    else refUrl = ''; // Avatar AI → t2i
+  } else {
+    refUrl = productUrl || '';
+    strength = kind === 'product' ? 0.45 : 0.6; // ช็อตสินค้าคงของจริงไว้เยอะ
+  }
 
-  const prompt = buildPrompt(input, !!refUrl);
+  const prompt = buildPrompt(input, refUrl ? 'i2i' : 't2i');
   try {
     let task: FalTask;
     if (refUrl) {
-      // image-to-image: อ้างอิงรูปจริง (strength ต่ำ = คงของเดิมไว้เยอะ)
-      task = await submitFal(FAL_MODELS.i2i, { image_url: refUrl, prompt, strength: 0.6, image_size: ratioToImageSize(input.ratio), num_images: 1 }, 'image');
+      task = await submitFal(FAL_MODELS.i2i, { image_url: refUrl, prompt, strength, image_size: ratioToImageSize(input.ratio), num_images: 1 }, 'image');
     } else {
       task = await submitFal(FAL_MODELS.image, { prompt, image_size: ratioToImageSize(input.ratio), num_images: 1 }, 'image');
     }
