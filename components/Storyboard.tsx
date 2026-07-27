@@ -7,7 +7,7 @@ export const SHOT_IMG_COST = 3;
 export type Shot = { id: string; name: string; desc: string; imgPath?: string };
 
 type Subjects = { presenter: boolean; product: boolean; place: boolean };
-type ImgState = { url?: string; loading?: boolean; err?: string; needCredits?: boolean };
+type ImgState = { url?: string; loading?: boolean; err?: string; needCredits?: boolean; usedRef?: string };
 
 function newId() {
   try { return crypto.randomUUID(); } catch { return 'sid-' + Date.now() + '-' + Math.floor(Math.random() * 1e6); }
@@ -132,6 +132,7 @@ export default function Storyboard({
     const r = await startShotImage(input);
     if (!alive.current) return;
     if (r.error || !r.task) { setImg(shot.id, { loading: false, err: r.error || T('เริ่มไม่สำเร็จ', 'Could not start'), needCredits: r.needCredits }); return; }
+    setImg(shot.id, { usedRef: r.usedRef });
     poll(shot.id, r.task);
   }
   function poll(id: string, task: any) {
@@ -210,6 +211,11 @@ export default function Storyboard({
                     <span className="muted" style={{ fontSize: 12 }}>{SHOT_IMG_COST} {T('เครดิต', 'cr')}</span>
                   </div>
                   {im.err && <p className="err" style={{ fontSize: 13, marginTop: 4 }}>{im.err}{im.needCredits ? ' — ' + T('เติมเครดิต / เติม fal.ai ก่อน', 'top up credits / fund fal.ai') : ''}</p>}
+                  {im.usedRef && (im.url || im.loading) && (
+                    <p style={{ fontSize: 12, marginTop: 4, color: im.usedRef.includes('ไม่มีรูปอ้างอิง') ? '#B4451A' : 'var(--muted)' }}>
+                      {T('อ้างอิงจาก: ', 'Reference used: ')}{im.usedRef}
+                    </p>
+                  )}
                 </div>
               </div>
             );

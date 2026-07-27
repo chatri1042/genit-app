@@ -112,7 +112,7 @@ async function signUploads(supabase: any, path?: string | null): Promise<string>
 }
 
 // ส่งงานเจนภาพ 1 ช็อตเข้า fal (เช็คยอดพอก่อน ยังไม่หัก)
-export async function startShotImage(input: ShotInput): Promise<{ task?: FalTask; error?: string; needCredits?: boolean }> {
+export async function startShotImage(input: ShotInput): Promise<{ task?: FalTask; error?: string; needCredits?: boolean; usedRef?: string }> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: 'ต้องล็อกอินก่อน' };
@@ -132,6 +132,7 @@ export async function startShotImage(input: ShotInput): Promise<{ task?: FalTask
   }
   const personRef = presenterUrl || presenterRefUrl; // รูปอ้างอิงหน้าคน (อัพเอง หรือหน้า AI ที่ล็อกไว้)
   const who = personDesc(input.avatar);
+  const noun = productNoun(input.brief?.point); // ชื่อสินค้าอังกฤษจากบรีฟ (เช่น หมอน → ergonomic latex pillow)
   const setting = sceneHint(input.brief?.point) || 'a tidy aesthetic setting that suits the product';
   const extra = [input.shotDesc ? `Also: ${input.shotDesc}.` : '', input.mood ? `Mood: ${MOOD_EN[input.mood] || input.mood}.` : ''].filter(Boolean).join(' ');
 
@@ -140,7 +141,10 @@ export async function startShotImage(input: ShotInput): Promise<{ task?: FalTask
   let prompt = '';
   if (kind === 'cta') {
     if (productUrl) refs.push(productUrl);
-    prompt = `Create a premium advertising hero shot. Use the exact product from the reference image and keep it identical (same shape, color, pattern, texture and label). Place it ${setting} on a clean premium background with dramatic soft lighting and empty space for text. Photorealistic. ${extra} No text, no watermark.`;
+    const only = `The ${noun} must be the SINGLE clear main subject; do NOT add any other product (no lamp, no diffuser, no bottle, no jar, no candle).`;
+    prompt = productUrl
+      ? `Create a premium advertising hero shot of the exact ${noun} from the reference image — keep it identical (same shape, color, pattern, texture and label). ${only} Place it ${setting} on a clean premium background with dramatic soft lighting and empty space for text. Photorealistic. ${extra} No text, no watermark.`
+      : `Create a premium advertising hero shot of a ${noun}. ${only} Beautifully staged ${setting} on a clean premium background with dramatic soft lighting and empty space for text. Photorealistic. ${extra} No text, no watermark.`;
   } else if (kind === 'presenter_product') {
     if (personRef) refs.push(personRef);
     if (productUrl) refs.push(productUrl);
@@ -154,8 +158,18 @@ export async function startShotImage(input: ShotInput): Promise<{ task?: FalTask
     prompt = `A beautiful wide establishing photo, ${setting}, warm cinematic lighting, no people in focus. Photorealistic. ${extra} No text, no watermark.`;
   } else { // product
     if (productUrl) refs.push(productUrl);
-    prompt = `Create a new professional lifestyle product photograph. Use the exact product shown in the reference image and keep it identical (same shape, color, pattern, texture and label — do not redesign it). Restage it beautifully ${setting}, with soft natural lighting, a tidy styled background and shallow depth of field, premium e-commerce look. Photorealistic. ${extra} No text, no watermark.`;
+    const only = `The ${noun} must be the SINGLE clear main subject — large, centered and in sharp focus in the foreground. Do NOT add or feature any other product (no lamp, no diffuser, no bottle, no jar, no candle); the only product in the photo is the ${noun}.`;
+    prompt = productUrl
+      ? `Create a professional lifestyle product photograph of the exact ${noun} shown in the reference image — keep it identical (same shape, color, pattern, texture and label; do not redesign it, do not replace it with a different object). ${only} Restage it beautifully ${setting}, soft natural lighting, tidy styled background, shallow depth of field, premium e-commerce look. Photorealistic. ${extra} No text, no watermark.`
+      : `Create a professional lifestyle product photograph of a ${noun}. ${only} Staged beautifully ${setting}, soft natural lighting, tidy styled background, shallow depth of field, premium e-commerce look. Photorealistic. ${extra} No text, no watermark.`;
   }
+
+  // บอกตรงๆ ว่าช็อตนี้ใช้รูปอะไรเป็นตัวอ้างอิงจริง (ไว้โชว์ให้ผู้ใช้เห็น จะได้รู้ว่ารูปสินค้าถูกส่งไปไหม)
+  const usedProduct = !!productUrl && refs.includes(productUrl);
+  const usedPerson = !!personRef && refs.includes(personRef);
+  const usedRef = refs.length === 0
+    ? 'ไม่มีรูปอ้างอิง (เจนจากคำบรรยาย)'
+    : [usedPerson ? 'หน้าคน' : '', usedProduct ? 'รูปสินค้า' : ''].filter(Boolean).join(' + ') || `อ้างอิง ${refs.length} รูป`;
 
   const useEdit = refs.length > 0;
   const model = useEdit ? FAL_MODELS.nanoEdit : FAL_MODELS.nano;
@@ -166,7 +180,7 @@ export async function startShotImage(input: ShotInput): Promise<{ task?: FalTask
 
   try {
     const task = await submitFal(model, body, 'image');
-    return { task };
+    return { task, usedRef };
   } catch (e) {
     const msg = String((e as Error).message);
     if (/คีย์ fal|เครดิต fal/.test(msg)) return { error: msg, needCredits: true };
@@ -178,7 +192,7 @@ export async function startShotImage(input: ShotInput): Promise<{ task?: FalTask
       const task = refUrl
         ? await submitFal(FAL_MODELS.i2i, { image_url: refUrl, prompt: fluxPrompt, strength: 0.85, image_size: ratioToImageSize(input.ratio), num_images: 1 }, 'image')
         : await submitFal(FAL_MODELS.image, { prompt: fluxPrompt, image_size: ratioToImageSize(input.ratio), num_images: 1 }, 'image');
-      return { task };
+      return { task, usedRef: (refUrl ? (anchor === 'product' ? 'รูปสินค้า' : 'หน้าคน') : 'ไม่มีรูปอ้างอิง') + ' (flux สำรอง)' };
     } catch (e2) {
       const m2 = String((e2 as Error).message);
       return { error: m2, needCredits: /คีย์ fal|เครดิต fal/.test(m2) };
@@ -198,7 +212,7 @@ export async function pollShotImage(task: FalTask): Promise<{ state: 'pending' |
   let path = '';
   try {
     const fileRes = await fetch(res.url!, { cache: 'no-store' });
-    const blob = await fileRes.blob();
+    const blob = new Blob([await fileRes.arrayBuffer()], { type: 'image/png' });
     path = `${user.id}/shot-${task.request_id}.png`;
     const { error: upErr } = await supabase.storage.from('outputs').upload(path, blob, { contentType: 'image/png', upsert: true });
     if (upErr) return { state: 'failed', error: 'บันทึกภาพไม่สำเร็จ' };

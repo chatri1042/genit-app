@@ -194,7 +194,7 @@ export async function pollJob(jobId: string): Promise<GenState> {
     if (cres.state === 'done') {
       try {
         const fileRes = await fetch(cres.url!, { cache: 'no-store' });
-        const blob = await fileRes.blob();
+        const blob = new Blob([await fileRes.arrayBuffer()], { type: 'video/mp4' });
         const path = `${user?.id}/${jobId}-final.mp4`;
         const { error: upErr } = await supabase.storage.from('outputs').upload(path, blob, { contentType: 'video/mp4', upsert: true });
         if (upErr) composeTask.failed = true;
@@ -239,15 +239,17 @@ export async function pollJob(jobId: string): Promise<GenState> {
     if (res.state === 'failed') { t.failed = true; t.errorMsg = res.error; jobError = res.error || 'สร้างไม่สำเร็จ'; changed = true; continue; }
     try {
       const fileRes = await fetch(res.url!, { cache: 'no-store' });
-      const blob = await fileRes.blob();
+      const ct = t.kind === 'video' ? 'video/mp4' : 'image/png';
       const ext = t.kind === 'video' ? 'mp4' : 'png';
+      // บังคับ mime type ให้ถูก (บางโมเดลเช่น VEED ส่งไฟล์มาเป็น octet-stream ซึ่ง bucket ไม่รับ)
+      const blob = new Blob([await fileRes.arrayBuffer()], { type: ct });
       const path = `${user?.id}/${jobId}-${t.request_id}.${ext}`;
-      const { error: upErr } = await supabase.storage.from('outputs').upload(path, blob, { contentType: t.kind === 'video' ? 'video/mp4' : 'image/png', upsert: true });
-      if (upErr) { t.failed = true; jobError = 'บันทึกผลลัพธ์ไม่สำเร็จ: ' + upErr.message; }
+      const { error: upErr } = await supabase.storage.from('outputs').upload(path, blob, { contentType: ct, upsert: true });
+      if (upErr) { t.failed = true; t.errorMsg = 'บันทึกไฟล์ไม่สำเร็จ: ' + upErr.message; jobError = 'บันทึกผลลัพธ์ไม่สำเร็จ: ' + upErr.message; }
       else { t.done = true; t.result_path = path; }
       changed = true;
     } catch (e) {
-      t.failed = true; jobError = 'ดาวน์โหลดผลลัพธ์ไม่สำเร็จ'; changed = true;
+      t.failed = true; t.errorMsg = 'ดาวน์โหลดผลลัพธ์ไม่สำเร็จ'; jobError = 'ดาวน์โหลดผลลัพธ์ไม่สำเร็จ'; changed = true;
     }
   }
 

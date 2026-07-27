@@ -66,6 +66,7 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
   const [count, setCount] = useState(2);
   const [mood, setMood] = useState(MOODS[0]);
   const [concept, setConcept] = useState('');
+  const [briefText, setBriefText] = useState('');
   const [scriptLang, setScriptLang] = useState<L>('th');
   const [script, setScript] = useState('');
   const [drafts, setDrafts] = useState<{ hook: string; text: string }[]>([]);
@@ -110,6 +111,7 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
   const [consent, setConsent] = useState(false);
   const [images, setImages] = useState<{ path: string; preview: string }[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState('');
   const [shots, setShots] = useState<Shot[]>([]);
 
@@ -128,6 +130,76 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
       setBrandAssets(paths.map((p, i) => ({ path: p, url: signed?.[i]?.signedUrl ?? '' })));
     })();
   }, [brandId, supabase]);
+
+  // ── จำค่าฟอร์มไว้ในเครื่อง (ไปหน้าอื่นแล้วกลับมาไม่ต้องตั้งใหม่ · ไม่เสียเครดิตซ้ำ) ──
+  const hydrated = useRef(false);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('genit-form-v1');
+      if (raw) {
+        const s = JSON.parse(raw);
+        if (s.brandId != null) setBrandId(s.brandId);
+        if (s.output != null) setOutput(s.output);
+        if (s.activePreset != null) setActivePreset(s.activePreset);
+        if (s.hasPresenter != null) setHasPresenter(s.hasPresenter);
+        if (s.hasProduct != null) setHasProduct(s.hasProduct);
+        if (s.hasPlace != null) setHasPlace(s.hasPlace);
+        if (s.presenterMode != null) setPresenterMode(s.presenterMode);
+        if (s.avGender != null) setAvGender(s.avGender);
+        if (s.avAge != null) setAvAge(s.avAge);
+        if (s.avEth != null) setAvEth(s.avEth);
+        if (s.ratio != null) setRatio(s.ratio);
+        if (s.duration != null) setDuration(s.duration);
+        if (s.count != null) setCount(s.count);
+        if (s.mood != null) setMood(s.mood);
+        if (s.concept != null) setConcept(s.concept);
+        if (s.briefText != null) setBriefText(s.briefText);
+        if (s.scriptLang != null) setScriptLang(s.scriptLang);
+        if (s.script != null) setScript(s.script);
+        if (s.spokenLang != null) setSpokenLang(s.spokenLang);
+        if (s.presenterGender != null) setPresenterGender(s.presenterGender);
+        if (s.subtitles != null) setSubtitles(s.subtitles);
+        if (s.cta != null) setCta(s.cta);
+        if (s.logo != null) setLogo(s.logo);
+        if (s.thumbnail != null) setThumbnail(s.thumbnail);
+        if (s.thumbCount != null) setThumbCount(s.thumbCount);
+        if (s.voiceMode != null) setVoiceMode(s.voiceMode);
+        if (s.vGender != null) setVGender(s.vGender);
+        if (s.vAge != null) setVAge(s.vAge);
+        if (s.vTone != null) setVTone(s.vTone);
+        if (s.vPick != null) setVPick(s.vPick);
+        if (s.imgMain != null) setImgMain(s.imgMain);
+        if (s.imgSub != null) setImgSub(s.imgSub);
+        if (Array.isArray(s.pickedAssets)) setPickedAssets(s.pickedAssets);
+        if (Array.isArray(s.images)) setImages(s.images);
+        if (Array.isArray(s.placeImgs)) setPlaceImgs(s.placeImgs);
+        if (s.presenterImg != null) setPresenterImg(s.presenterImg);
+        if (s.logoImg != null) setLogoImg(s.logoImg);
+        if (Array.isArray(s.shots)) setShots(s.shots);
+      }
+    } catch { /* ignore */ }
+    hydrated.current = true;
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated.current) return;
+    try {
+      localStorage.setItem('genit-form-v1', JSON.stringify({
+        brandId, output, activePreset, hasPresenter, hasProduct, hasPlace,
+        presenterMode, avGender, avAge, avEth, ratio, duration, count,
+        mood, concept, briefText, scriptLang, script, spokenLang, presenterGender,
+        subtitles, cta, logo, thumbnail, thumbCount,
+        voiceMode, vGender, vAge, vTone, vPick, imgMain, imgSub,
+        pickedAssets, images, placeImgs, presenterImg, logoImg, shots,
+      }));
+    } catch { /* ignore */ }
+  }, [brandId, output, activePreset, hasPresenter, hasProduct, hasPlace, presenterMode, avGender, avAge, avEth, ratio, duration, count, mood, concept, briefText, scriptLang, script, spokenLang, presenterGender, subtitles, cta, logo, thumbnail, thumbCount, voiceMode, vGender, vAge, vTone, vPick, imgMain, imgSub, pickedAssets, images, placeImgs, presenterImg, logoImg, shots]);
+
+  function clearSaved() {
+    try { localStorage.removeItem('genit-form-v1'); } catch { /* ignore */ }
+    setShots([]); setImages([]); setPlaceImgs([]); setPresenterImg(null); setLogoImg(null);
+    setPickedAssets([]); setBriefText(''); setScript(''); setConcept(''); setActivePreset('');
+  }
 
   const credits = useMemo(() => {
     if (isImage) return Math.max(1, count) * 3;
@@ -251,7 +323,7 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
   });
 
   return (
-    <form ref={formRef} action={createJobDraft} className="gen-wrap">
+    <form ref={formRef} action={createJobDraft} onSubmit={() => setSubmitting(true)} className="gen-wrap">
       <input type="hidden" name="format" value={output === 'image' ? 'image' : 'video'} />
       <input type="hidden" name="ratio" value={ratio} />
       <input type="hidden" name="concept" value={concept} />
@@ -271,21 +343,30 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
       <input type="hidden" name="extra" value={extra} />
 
       <div className="card" style={{ minWidth: 0 }}>
-        {/* แบรนด์ (ย้ายขึ้นบนสุด) */}
-        {brands.length > 0 && (
-          <>
-            <label className="field"><span>{T('สร้างให้แบรนด์ไหน', 'For which brand')}</span>
-              <select value={brandId} onChange={(e) => setBrandId(e.target.value)}>
-                <option value="">{T('— ไม่ระบุ —', '— none —')}</option>
-                {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-              </select>
-            </label>
-            {brandId && brandDesc && (
-              <div style={{ marginTop: 8, background: 'var(--yellow-soft)', border: '1px solid var(--yellow-deep)', borderRadius: 10, padding: '10px 14px', fontSize: 13.5 }}>
-                <b>{T('รายละเอียดแบรนด์ (ใส่ในบทให้อัตโนมัติ):', 'Brand info (auto-added to script):')}</b> {brandDesc}
-              </div>
-            )}
-          </>
+        <div className="row" style={{ justifyContent: 'flex-end', marginBottom: 4 }}>
+          <button type="button" className="btn-ghost" style={{ padding: '5px 12px', borderRadius: 8, cursor: 'pointer', font: 'inherit', fontSize: 12.5 }}
+            onClick={() => { if (confirm(T('ล้างค่าทั้งหมดแล้วเริ่มใหม่?', 'Clear everything and start over?'))) clearSaved(); }}>
+            {T('↺ เริ่มใหม่ (ล้างค่า)', '↺ Start over (clear)')}
+          </button>
+        </div>
+        {/* แบรนด์ (บนสุดเสมอ — โชว์ตลอดไม่ให้หายน่าตกใจ) */}
+        <label className="field"><span>{T('สร้างให้แบรนด์ไหน', 'For which brand')}</span>
+          <select value={brandId} onChange={(e) => setBrandId(e.target.value)}>
+            <option value="">{T('— ไม่ระบุ —', '— none —')}</option>
+            {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+          </select>
+        </label>
+        {brands.length === 0 && (
+          <p className="muted" style={{ fontSize: 13, marginTop: 6 }}>
+            {T('ยังไม่มีแบรนด์ที่บันทึกไว้ — ', 'No saved brands yet — ')}
+            <a href="/brands" style={{ color: 'var(--yellow-deep)', fontWeight: 600 }}>{T('สร้างแบรนด์ที่นี่', 'create one here')}</a>
+            {T(' (ถ้าเพิ่งสร้าง ลองรีเฟรชหน้า)', ' (if you just made one, refresh)')}
+          </p>
+        )}
+        {brandId && brandDesc && (
+          <div style={{ marginTop: 8, background: 'var(--yellow-soft)', border: '1px solid var(--yellow-deep)', borderRadius: 10, padding: '10px 14px', fontSize: 13.5 }}>
+            <b>{T('รายละเอียดแบรนด์ (ใส่ในบทให้อัตโนมัติ):', 'Brand info (auto-added to script):')}</b> {brandDesc}
+          </div>
         )}
 
         {/* ผลลัพธ์: วิดีโอ / รูปภาพ */}
@@ -471,7 +552,7 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
         {!isImage && (
           <>
             <label className="field"><span>{T('รายละเอียด / บรีฟ (อยากบอกอะไรบ้าง)', 'Details / brief (anything to say)')}</span>
-              <textarea name="bfPoint" rows={3} placeholder={T('เช่น เซรั่มหน้าใส Glow 199 บาท · ใช้ 2 สัปดาห์หน้าใสขึ้น · ลดถึง 30 มิ.ย. / หรือ รีสอร์ทริมทะเล ห้องพักเริ่ม 1,500 · มีสระว่ายน้ำ', 'e.g. Glow serum 199 THB · brighter in 2 weeks · sale until Jun 30 / or beachfront resort, rooms from 1,500, pool')} /></label>
+              <textarea name="bfPoint" rows={3} value={briefText} onChange={(e) => setBriefText(e.target.value)} placeholder={T('เช่น เซรั่มหน้าใส Glow 199 บาท · ใช้ 2 สัปดาห์หน้าใสขึ้น · ลดถึง 30 มิ.ย. / หรือ รีสอร์ทริมทะเล ห้องพักเริ่ม 1,500 · มีสระว่ายน้ำ', 'e.g. Glow serum 199 THB · brighter in 2 weeks · sale until Jun 30 / or beachfront resort, rooms from 1,500, pool')} /></label>
 
             <div className="mini-label">{T('ภาษาของบทพูด', 'Script language')}</div>
             <div className="seg">
@@ -611,7 +692,11 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
 
         <div className="creditbar">
           <div><div className="muted" style={{ fontSize: 13 }}>{T('ใช้เครดิตประมาณ', 'Estimated credits')}</div><div className="cc">{credits}</div></div>
-          <button className="btn btn-lg" disabled={uploading}>{isImage ? T('สร้างรูป', 'Generate images') : T('สร้างวิดีโอ', 'Generate video')} →</button>
+          <button className="btn btn-lg" disabled={uploading || submitting}>
+            {submitting
+              ? <><span className="spinner" style={{ width: 16, height: 16, marginRight: 8, verticalAlign: 'middle', display: 'inline-block' }} />{T('กำลังบันทึกงาน…', 'Saving job…')}</>
+              : <>{isImage ? T('สร้างรูป', 'Generate images') : T('สร้างวิดีโอ', 'Generate video')} →</>}
+          </button>
         </div>
         {err && <p className="err">{err}</p>}
         <p className="muted" style={{ fontSize: 13, marginTop: 10 }}>* {T('บันทึกเป็นงานจริง — การเจน AI จะต่อในเฟสถัดไป', 'Saved as a real job — AI generation comes next')}</p>
