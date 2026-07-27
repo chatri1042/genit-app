@@ -126,7 +126,7 @@ export async function startGeneration(jobId: string): Promise<GenState> {
           // สเต็ป 1: ทำเสียงไทยจากสคริปต์ (สเต็ป 2 ทำปากขยับใน pollJob)
           const t = await submitFal(FAL_MODELS.tts, {
             text: scriptFull, language_boost: ttsLangBoost,
-            voice_setting: { voice_id: ttsVoiceId, speed: 1, emotion: 'neutral' },
+            voice_setting: { voice_id: ttsVoiceId, speed: 1.15, emotion: 'happy' },
             audio_setting: { format: 'mp3', sample_rate: 32000 },
           }, 'audio');
           t.pipeline = 'lipsync'; t.stage = 'tts'; t.imageUrl = c.url;

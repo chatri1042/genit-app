@@ -4,6 +4,17 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 
+// ลบรูปสินค้าออกจากคลังของแบรนด์ (ลบทุกแถวที่ path เดียวกัน — เก็บกวาดรูปซ้ำ)
+export async function deleteBrandAsset(brandId: string, path: string): Promise<{ ok: boolean; error?: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'ต้องล็อกอินก่อน' };
+  const { error } = await supabase.from('assets').delete()
+    .eq('user_id', user.id).eq('brand_id', brandId).eq('kind', 'product_image').eq('url', path);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
 export async function createBrand(formData: FormData) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

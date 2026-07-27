@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { createJobDraft } from '@/app/actions';
+import { createJobDraft, deleteBrandAsset } from '@/app/actions';
 import { aiDraftScripts } from '@/app/ai';
 import { useLang } from './LanguageProvider';
 import Storyboard, { type Shot } from './Storyboard';
@@ -124,7 +124,7 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
       const { data: bd } = await supabase.from('brands').select('description').eq('id', brandId).single();
       setBrandDesc(bd?.description ?? '');
       const { data } = await supabase.from('assets').select('url').eq('brand_id', brandId).eq('kind', 'product_image').order('created_at', { ascending: false });
-      const paths = (data ?? []).map((a) => a.url);
+      const paths = [...new Set((data ?? []).map((a) => a.url).filter(Boolean))]; // ตัดพาธซ้ำออก (กันรูปเดียวโผล่หลายอัน)
       if (!paths.length) { setBrandAssets([]); return; }
       const { data: signed } = await supabase.storage.from('uploads').createSignedUrls(paths, 3600);
       setBrandAssets(paths.map((p, i) => ({ path: p, url: signed?.[i]?.signedUrl ?? '' })));
@@ -468,11 +468,21 @@ export default function GenerateForm({ brands }: { brands: Brand[] }) {
                   {brandAssets.map((a) => {
                     const picked = pickedAssets.includes(a.path);
                     return (
-                      <button type="button" key={a.path} onClick={() => setPickedAssets((p) => picked ? p.filter((x) => x !== a.path) : [...p, a.path])}
-                        style={{ position: 'relative', padding: 0, border: picked ? '2.5px solid var(--yellow-deep)' : '2.5px solid transparent', borderRadius: 10, cursor: 'pointer', background: 'none', opacity: picked ? 1 : 0.6, lineHeight: 0 }}>
-                        <img src={a.url} alt="" style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 8, display: 'block' }} />
-                        {picked && <span style={{ position: 'absolute', top: 2, right: 2, background: 'var(--yellow-deep)', color: '#3A2E00', borderRadius: '50%', width: 18, height: 18, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>✓</span>}
-                      </button>
+                      <div key={a.path} style={{ position: 'relative', lineHeight: 0 }}>
+                        <button type="button" onClick={() => setPickedAssets((p) => picked ? p.filter((x) => x !== a.path) : [...p, a.path])}
+                          style={{ position: 'relative', padding: 0, border: picked ? '2.5px solid var(--yellow-deep)' : '2.5px solid transparent', borderRadius: 10, cursor: 'pointer', background: 'none', opacity: picked ? 1 : 0.6, lineHeight: 0 }}>
+                          <img src={a.url} alt="" style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 8, display: 'block' }} />
+                          {picked && <span style={{ position: 'absolute', top: 2, right: 2, background: 'var(--yellow-deep)', color: '#3A2E00', borderRadius: '50%', width: 18, height: 18, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>✓</span>}
+                        </button>
+                        <button type="button" title={T('ลบรูปนี้ออกจากคลัง', 'Delete from library')}
+                          onClick={async () => {
+                            if (!confirm(T('ลบรูปนี้ออกจากคลังแบรนด์?', 'Delete this image from the brand library?'))) return;
+                            const r = await deleteBrandAsset(brandId, a.path);
+                            if (r.ok) { setBrandAssets((prev) => prev.filter((x) => x.path !== a.path)); setPickedAssets((p) => p.filter((x) => x !== a.path)); }
+                            else alert(r.error || T('ลบไม่สำเร็จ', 'Delete failed'));
+                          }}
+                          style={{ position: 'absolute', top: -6, left: -6, background: '#B4451A', color: '#fff', border: 'none', borderRadius: '50%', width: 18, height: 18, fontSize: 11, cursor: 'pointer', lineHeight: 1 }}>×</button>
+                      </div>
                     );
                   })}
                 </div>
