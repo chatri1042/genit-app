@@ -92,10 +92,10 @@ export async function startGeneration(jobId: string): Promise<GenState> {
 
   const scriptFull = job.script ? String(job.script).slice(0, 500) : '';
   const isPresenterShot = (t: string) => /พรีเซนเตอร์|presenter|คน|ผู้หญิง|ผู้ชาย|talk|selfie|intro|เปิดเรื่อง|ถือสินค้า|ใช้สินค้า/i.test(t || '');
-  // เสียงพากย์: เลือกโทนเสียงตามเพศพรีเซนเตอร์ + ภาษาที่พูด
+  // เสียงพากย์ ElevenLabs: เลือกเสียงตามเพศพรีเซนเตอร์ + ภาษา
   const pGender = job.settings?.presenter_gender || job.settings?.presenter?.avatar?.gender || '';
-  const ttsVoiceId = /ชาย|male|man/i.test(String(pGender)) ? 'Deep_Voice_Man' : 'Wise_Woman';
-  const ttsLangBoost = job.settings?.spoken_lang === 'en' ? 'English' : 'Thai';
+  const ttsVoice = /ชาย|male|man/i.test(String(pGender)) ? 'Brian' : 'Aria';
+  const ttsLangCode = job.settings?.spoken_lang === 'en' ? 'en' : 'th';
 
   // ภาพจากสตอรีบอร์ด (แต่ละช็อตมี imgPath ใน bucket 'outputs') — ถ้าไม่มีจริงๆ ค่อยใช้รูปสินค้าแทน
   const shotList: any[] = Array.isArray(job.shots) ? job.shots : [];
@@ -125,9 +125,8 @@ export async function startGeneration(jobId: string): Promise<GenState> {
         if (i === firstPersonIdx && scriptFull) {
           // สเต็ป 1: ทำเสียงไทยจากสคริปต์ (สเต็ป 2 ทำปากขยับใน pollJob)
           const t = await submitFal(FAL_MODELS.tts, {
-            text: scriptFull, language_boost: ttsLangBoost,
-            voice_setting: { voice_id: ttsVoiceId, speed: 1.15, emotion: 'happy' },
-            audio_setting: { format: 'mp3', sample_rate: 32000 },
+            text: scriptFull, voice: ttsVoice, language_code: ttsLangCode,
+            stability: 0.45, similarity_boost: 0.8, speed: 1.05,
           }, 'audio');
           t.pipeline = 'lipsync'; t.stage = 'tts'; t.imageUrl = c.url;
           tasks.push(t);

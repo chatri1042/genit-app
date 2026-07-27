@@ -14,8 +14,9 @@ export const FAL_MODELS = {
   // Seedance 2.0 image-to-video — สวย+เสียงในตัว แต่บล็อกรูปหน้าคนเหมือนจริง (ใช้กับช็อตไม่มีคนเท่านั้น)
   seedance: process.env.FAL_MODEL_SEEDANCE || 'bytedance/seedance-2.0/image-to-video',
   t2v: process.env.FAL_MODEL_T2V || 'fal-ai/ltx-video',
-  // เสียงพากย์ไทยจากสคริปต์ (MiniMax รองรับไทย)
-  tts: process.env.FAL_MODEL_TTS || 'fal-ai/minimax/speech-02-hd',
+  // เสียงพากย์ไทยจากสคริปต์ — ElevenLabs multilingual (เสียงไทยเป็นธรรมชาติกว่า MiniMax)
+  tts: process.env.FAL_MODEL_TTS || 'fal-ai/elevenlabs/tts/multilingual-v2',
+  ttsFallback: process.env.FAL_MODEL_TTS_FALLBACK || 'fal-ai/minimax/speech-02-hd',
   // ทำปากขยับตามไฟล์เสียง — รับรูปหน้าคน + เสียง (ไม่บล็อกหน้า เพราะเป็นงานหลักของมัน)
   fabric: process.env.FAL_MODEL_FABRIC || 'veed/fabric-1.0',
   lipsync: process.env.FAL_MODEL_LIPSYNC || 'fal-ai/sync-lipsync',
