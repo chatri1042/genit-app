@@ -86,6 +86,25 @@ export default function JobRunner({ jobId, initialStatus, isImage }: { jobId: st
         </div>
       )}
 
+      {/* สถานะรายคัท — โชว์ให้เห็นว่าแต่ละคัททำอะไร สำเร็จ/ล้มเหลว เพราะอะไร */}
+      {state.tasks && state.tasks.length > 0 && (
+        <div style={{ border: '1px solid var(--line)', borderRadius: 10, padding: '10px 14px', marginBottom: 14 }}>
+          <div style={{ fontWeight: 600, fontSize: 13.5, marginBottom: 8 }}>{T('สถานะรายคัท', 'Per-cut status')}</div>
+          {state.tasks.map((t, i) => {
+            const ok = t.state === 'สำเร็จ';
+            const bad = t.state === 'ล้มเหลว';
+            return (
+              <div key={i} style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'baseline', fontSize: 13, padding: '3px 0', borderTop: i ? '1px solid var(--line)' : 'none' }}>
+                <span style={{ minWidth: 18 }}>{ok ? '✅' : bad ? '❌' : '⏳'}</span>
+                <span style={{ fontWeight: 500 }}>{t.label}</span>
+                <span className="muted">— {t.state}</span>
+                {t.error && <span style={{ color: '#B4451A', width: '100%', paddingLeft: 24, fontSize: 12.5 }}>{t.error}</span>}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {state.results && state.results.length > 0 && (
         <>
           <div style={{ fontWeight: 600, marginBottom: 12 }}>

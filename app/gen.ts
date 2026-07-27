@@ -16,7 +16,22 @@ export type GenState = {
   results?: { kind: 'image' | 'video'; url: string }[];
   error?: string;
   needCredits?: boolean;
+  tasks?: { label: string; state: string; error?: string }[]; // สถานะรายคัท (ไว้โชว์/ดีบัก)
 };
+
+// สรุปสถานะรายคัท ไว้โชว์บนหน้างาน (จะได้เห็นว่าคัทไหนพังเพราะอะไร)
+function buildTaskInfo(tasks: FalTask[]): { label: string; state: string; error?: string }[] {
+  return tasks.map((t, i) => {
+    const isTalk = t.pipeline === 'lipsync';
+    const label = `คัท ${i + 1} · ${isTalk ? 'พรีเซนเตอร์พูด (เสียง+ปาก)' : t.kind === 'audio' ? 'เสียง' : 'ขยับภาพ'}`;
+    let state = 'กำลังสร้าง';
+    if (t.done) state = 'สำเร็จ';
+    else if (t.failed) state = 'ล้มเหลว';
+    else if (isTalk && t.stage === 'tts') state = 'กำลังทำเสียงไทย';
+    else if (isTalk && t.stage === 'lipsync') state = 'กำลังทำปากขยับ';
+    return { label, state, error: t.errorMsg };
+  });
+}
 
 async function loadJob(jobId: string): Promise<{ supabase: Awaited<ReturnType<typeof createClient>>; job: JobRow } | { error: string }> {
   const supabase = await createClient();
@@ -165,7 +180,7 @@ export async function pollJob(jobId: string): Promise<GenState> {
 
   // สถานะจบแล้ว — คืนผลลัพธ์ที่มี ไม่ประมวลผลซ้ำ (กันคืนเครดิตซ้ำ)
   if (job.status === 'done' || job.status === 'failed') {
-    return { status: job.status as any, total: tasks.length, done: tasks.filter((t) => t.done).length, results: await signResults(supabase, tasks, composeTask), error: job.settings?.error };
+    return { status: job.status as any, total: tasks.length, done: tasks.filter((t) => t.done).length, results: await signResults(supabase, tasks, composeTask), error: job.settings?.error, tasks: buildTaskInfo(tasks) };
   }
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -174,7 +189,7 @@ export async function pollJob(jobId: string): Promise<GenState> {
   if (composeTask && !composeTask.done && !composeTask.failed) {
     const cres = await checkFal(composeTask);
     if (cres.state === 'pending') {
-      return { status: 'running', total: tasks.length, done: tasks.filter((t) => t.done).length, results: await signResults(supabase, tasks, null) };
+      return { status: 'running', total: tasks.length, done: tasks.filter((t) => t.done).length, results: await signResults(supabase, tasks, null), error: job.settings?.error, tasks: buildTaskInfo(tasks) };
     }
     if (cres.state === 'done') {
       try {
@@ -192,7 +207,7 @@ export async function pollJob(jobId: string): Promise<GenState> {
       status: 'done',
       output_urls: { ...(job.output_urls ?? {}), tasks, composeTask, results: buildResultPaths(tasks, composeTask) },
     }).eq('id', jobId);
-    return { status: 'done', total: tasks.length, done: tasks.filter((t) => t.done).length, results: await signResults(supabase, tasks, composeTask) };
+    return { status: 'done', total: tasks.length, done: tasks.filter((t) => t.done).length, results: await signResults(supabase, tasks, composeTask), error: job.settings?.error, tasks: buildTaskInfo(tasks) };
   }
 
   let changed = false;
@@ -259,7 +274,7 @@ export async function pollJob(jobId: string): Promise<GenState> {
           output_urls: { ...(job.output_urls ?? {}), tasks, composeTask: newCompose },
           ...(jobError ? { settings: { ...job.settings, error: jobError } } : {}),
         }).eq('id', jobId);
-        return { status: 'running', total, done: doneCount, results: await signResults(supabase, tasks, null) };
+        return { status: 'running', total, done: doneCount, results: await signResults(supabase, tasks, null), tasks: buildTaskInfo(tasks) };
       } catch (e) {
         // เริ่มต่อคลิปไม่สำเร็จ → ปล่อยจบเป็นคลิปแยก (ทำต่อด้านล่าง)
       }
@@ -283,5 +298,5 @@ export async function pollJob(jobId: string): Promise<GenState> {
     }
   }
 
-  return { status: status as any, total, done: doneCount, results: await signResults(supabase, tasks, composeTask), error: jobError || undefined };
+  return { status: status as any, total, done: doneCount, results: await signResults(supabase, tasks, composeTask), error: jobError || job.settings?.error || undefined, tasks: buildTaskInfo(tasks) };
 }
